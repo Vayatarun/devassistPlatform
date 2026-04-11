@@ -1,0 +1,27 @@
+﻿@using Analyzer1.UI.Model
+<div class="code">
+    <h4>@Issue.File (Line @Issue.Line)</h4>
+
+    @foreach (var line in Lines)
+    {
+        if (line.Number == Issue.Line)
+        {
+            <div class="highlight">@line.Number: @line.Text</div>
+        }
+        else
+        {
+            <div>@line.Number: @line.Text</div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IssueModel Issue { get; set; }
+
+    List<(int Number, string Text)> Lines = new()
+    {
+        (1,"class User {}"),
+        (10,"var x = null;"),
+        (25,"await SendEmail();")
+    };
+}

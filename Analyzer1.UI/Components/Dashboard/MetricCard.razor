@@ -1,0 +1,11 @@
+﻿<div class="metric-card">
+    <h4>@Title</h4>
+    <div class="value">@Value</div>
+    <div class="trend">@Trend</div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Value { get; set; }
+    [Parameter] public string Trend { get; set; }
+}

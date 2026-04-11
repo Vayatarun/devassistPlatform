@@ -1,0 +1,19 @@
+﻿@page "/projects"
+@using Analyzer1.UI.Model
+
+<h3>Projects</h3>
+
+@foreach (var p in Project)
+{
+    <div class="card">
+        <h4>@p.Name</h4>
+        <p>Issues: @p.Issues</p>
+    </div>
+}
+
+@code {
+    List<ProjectModel> Project = new()
+    {
+        new ProjectModel { Name="HRMS", Issues=120 }
+    };
+}

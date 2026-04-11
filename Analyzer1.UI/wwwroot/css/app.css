@@ -1,0 +1,79 @@
+body {
+    margin: 0;
+    font-family: Segoe UI;
+    background: #f4f6f9;
+}
+
+.app-shell {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 220px;
+    background: #111827;
+    color: white;
+    padding: 20px;
+}
+
+.main {
+    flex: 1;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: white;
+}
+
+.content {
+    padding: 20px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 15px;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    background: white;
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+    background: #f1f1f1;
+    cursor: pointer;
+}
+
+.badge.critical {
+    color: red;
+}
+
+.badge.major {
+    color: orange;
+}
+
+.code {
+    background: #1e1e1e;
+    color: white;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.highlight {
+    background: #ff000033;
+}

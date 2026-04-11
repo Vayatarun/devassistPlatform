@@ -1,0 +1,20 @@
+﻿@using Analyzer1.UI.Model
+<div class="filters">
+    <select @onchange="OnChange">
+        <option>All</option>
+        <option>Critical</option>
+        <option>Major</option>
+    </select>
+</div>
+
+@code {
+    [Parameter] public EventCallback<FilterModel> OnFilterChanged { get; set; }
+
+    async Task OnChange(ChangeEventArgs e)
+    {
+        await OnFilterChanged.InvokeAsync(new FilterModel
+        {
+            Severity = e.Value.ToString()
+        });
+    }
+}

@@ -1,0 +1,28 @@
+﻿@using Analyzer1.UI.Model
+<table>
+    <thead>
+        <tr>
+            <th>Rule</th>
+            <th>Severity</th>
+            <th>File</th>
+            <th>Line</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var issue in Issues)
+        {
+            <tr @onclick="() => OnSelect.InvokeAsync(issue)">
+                <td>@issue.Rule</td>
+                <td><SeverityBadge Severity="@issue.Severity" /></td>
+                <td>@issue.File</td>
+                <td>@issue.Line</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public List<IssueModel> Issues { get; set; }
+    [Parameter] public EventCallback<IssueModel> OnSelect { get; set; }
+}

@@ -1,0 +1,103 @@
+﻿@page "/review"
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<h3 class="text-center mb-4">SVN Diff Code Review</h3>
+
+<div class="card p-4 mb-4 shadow-sm">
+    <h5>Upload .diff File</h5>
+    <p class="text-muted">Select a .diff file to analyze code changes. Issues will be displayed below.</p>
+
+    <InputFile OnChange="UploadFile" class="form-control mb-2" />
+
+    @if (uploading)
+    {
+        <div class="alert alert-info mt-2">
+            <strong>Analyzing...</strong> Please wait.
+        </div>
+    }
+</div>
+
+@if (issues?.Count > 0)
+{
+    <div class="card p-3 shadow-sm">
+        <h5>Code Review Issues (@issues.Count)</h5>
+
+        <table class="table table-hover table-striped mt-2">
+            <thead class="table-dark">
+                <tr>
+                    <th>File</th>
+                    <th>Line</th>
+                    <th>Rule</th>
+                    <th>Severity</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in issues)
+                {
+                    <tr>
+                        <td>@i.FileName</td>
+                        <td>@i.LineNumber</td>
+                        <td>@i.RuleId</td>
+                        <td>
+                            <span class="badge @GetSeverityClass(i.Severity)">
+                                @i.Severity
+                            </span>
+                        </td>
+                        <td>@i.Message</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+
+    bool uploading = false;
+
+    List<IssueDto> issues = new();
+
+    async Task UploadFile(InputFileChangeEventArgs e)
+    {
+        uploading = true;
+
+        var file = e.File;
+
+        var content = new MultipartFormDataContent();
+        var fileStream = file.OpenReadStream();
+        content.Add(new StreamContent(fileStream), "diffFile", file.Name);
+
+        var response = await Http.PostAsync("api/review/upload", content);
+
+        // Read issue JSON if API returns it (optional)
+        if (response.IsSuccessStatusCode)
+        {
+            issues = await response.Content.ReadFromJsonAsync<List<IssueDto>>();
+        }
+
+        // Download Excel
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        await JS.InvokeVoidAsync("downloadFile", "CodeReviewReport.xlsx", bytes);
+
+        uploading = false;
+    }
+
+    string GetSeverityClass(string severity) => severity switch
+    {
+        "Error" => "bg-danger",
+        "Warning" => "bg-warning text-dark",
+        _ => "bg-info"
+    };
+
+    public class IssueDto
+    {
+        public string FileName { get; set; }
+        public int LineNumber { get; set; }
+        public string RuleId { get; set; }
+        public string Severity { get; set; }
+        public string Message { get; set; }
+    }
+}

@@ -1,0 +1,43 @@
+﻿@page "/issues"
+@using Analyzer1.UI.Components.CodeViewer
+@using Analyzer1.UI.Components.Issues
+@using Analyzer1.UI.Model
+
+<h3>Issues</h3>
+
+<IssueFilter OnFilterChanged="ApplyFilters" />
+
+<IssueTable Issues="FilteredIssues" OnSelect="SelectIssue" />
+
+@if (SelectedIssue != null)
+{
+    <CodeViewer Issue="SelectedIssue" />
+}
+
+@code {
+    List<IssueModel> AllIssues = new()
+    {
+        new IssueModel { Rule="NullCheck", Severity="Critical", File="User.cs", Line=10 },
+        new IssueModel { Rule="AsyncVoid", Severity="Major", File="Email.cs", Line=25 }
+    };
+
+    List<IssueModel> FilteredIssues;
+    IssueModel SelectedIssue;
+
+    protected override void OnInitialized()
+    {
+        FilteredIssues = AllIssues;
+    }
+
+    void ApplyFilters(FilterModel filter)
+    {
+        FilteredIssues = AllIssues
+            .Where(x => filter.Severity == "All" || x.Severity == filter.Severity)
+            .ToList();
+    }
+
+    void SelectIssue(IssueModel issue)
+    {
+        SelectedIssue = issue;
+    }
+}

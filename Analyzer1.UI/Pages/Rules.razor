@@ -1,0 +1,37 @@
+﻿@page "/rules"
+@using Analyzer1.UI.Model
+
+<h3>Rules</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Severity</th>
+            <th>Enabled</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var r in Rule)
+        {
+            <tr>
+                <td>@r.Name</td>
+                <td>
+                    <select @bind="r.Severity">
+                        <option>Critical</option>
+                        <option>Major</option>
+                    </select>
+                </td>
+                <td><input type="checkbox" @bind="r.Enabled" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<RuleModel> Rule = new()
+    {
+        new RuleModel { Name="NullCheck", Severity="Critical", Enabled=true }
+    };
+}
