@@ -1,4 +1,4 @@
-﻿using Analyzer.Core.Enums;
+using Analyzer.Core.Enums;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Rules.Attributes;
@@ -35,20 +35,20 @@ namespace Analyzer.Rules.Design
 
                 var methodKey = $"{symbol.ContainingType}.{symbol.Name}";
 
-                if (!context.GlobalStore.MethodUsageMap.ContainsKey(methodKey))
-                {
-                    context.GlobalStore.MethodUsageMap[methodKey] = new List<CallSiteInfo>();
-                }
-
                 var classNode = invocation.Ancestors()
                     .OfType<ClassDeclarationSyntax>()
                     .FirstOrDefault();
 
-                context.GlobalStore.MethodUsageMap[methodKey].Add(new CallSiteInfo
+                // Bug 13 fix: MethodUsageMap is now ConcurrentDictionary<string, ConcurrentBag<>>
+                var bag = context.GlobalStore.MethodUsageMap.GetOrAdd(
+                    methodKey, _ => new System.Collections.Concurrent.ConcurrentBag<CallSiteInfo>());
+
+                bag.Add(new CallSiteInfo
                 {
                     FilePath = context.FilePath,
                     ClassName = classNode?.Identifier.Text ?? "Unknown",
-                    Line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line
+                    // Bug 9 fix: store 1-based line numbers
+                    Line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1
                 });
             }
 

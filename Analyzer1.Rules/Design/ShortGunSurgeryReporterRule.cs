@@ -1,4 +1,4 @@
-﻿using Analyzer.Core.Enums;
+using Analyzer.Core.Enums;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Rules.Attributes;
@@ -20,7 +20,6 @@ namespace Analyzer.Rules.Design
             Description = "Changes to this method may require modifications across many classes.",
             Category = "Design",
             DefaultSeverity = Severity.Major,
-           // Remediation = "Reduce coupling by encapsulating behavior or redesigning responsibilities."
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
@@ -29,18 +28,13 @@ namespace Analyzer.Rules.Design
 
             foreach (var kvp in context.GlobalStore.MethodUsageMap)
             {
-                var method = kvp.Key;
-                var usages = kvp.Value;
+                // Bug 13 fix: MethodUsageMap values are now ConcurrentBag — materialize to List
+                var usages = kvp.Value.ToList();
 
-                var distinctClasses = usages
-                    .Select(u => u.ClassName)
-                    .Distinct()
-                    .Count();
-
+                var distinctClasses = usages.Select(u => u.ClassName).Distinct().Count();
                 var totalCalls = usages.Count;
 
-                if (distinctClasses >= ClassSpreadThreshold ||
-                    totalCalls >= CallCountThreshold)
+                if (distinctClasses >= ClassSpreadThreshold || totalCalls >= CallCountThreshold)
                 {
                     var severity = CalculateSeverity(distinctClasses, totalCalls);
 
@@ -49,9 +43,9 @@ namespace Analyzer.Rules.Design
                         issues.Add(new CodeIssue
                         {
                             RuleId = Metadata.RuleId,
-                            Message = BuildMessage(method, distinctClasses, totalCalls),
+                            Message = BuildMessage(kvp.Key, distinctClasses, totalCalls),
                             FilePath = usage.FilePath,
-                            Line = usage.Line,
+                            Line = usage.Line,   // already 1-based (fixed in Collector)
                             Severity = severity
                         });
                     }
@@ -63,12 +57,8 @@ namespace Analyzer.Rules.Design
 
         private Severity CalculateSeverity(int classes, int calls)
         {
-            if (classes > 10 || calls > 25)
-                return Severity.Critical;
-
-            if (classes > 7)
-                return Severity.Major;
-
+            if (classes > 10 || calls > 25) return Severity.Critical;
+            if (classes > 7) return Severity.Major;
             return Severity.Minor;
         }
 

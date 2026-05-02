@@ -1,7 +1,5 @@
 ﻿using Analyzer1.API.Models;
-using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 
 public class AppDbContext : DbContext
 {
@@ -10,4 +8,5 @@ public class AppDbContext : DbContext
     public DbSet<Issue> Issues { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<Rule> Rules { get; set; }
+    public DbSet<AnalysisScan> Scans { get; set; }
 }

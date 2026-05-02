@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeAnalyzer Pro — Interactive Tutorial</title>
+<style>
+/* ── Reset & Base ──────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a237e;--blue2:#3f51b5;--blue3:#7986cb;
+  --green:#2e7d32;--red:#c62828;--orange:#e65100;
+  --yellow:#f9a825;--purple:#6a1b9a;
+  --bg:#f0f2f5;--card:#fff;--text:#222;--sub:#555;
+  --code-bg:#1e1e2e;--code-text:#cdd6f4;
+}
+html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
+/* ── Shell ─────────────────────────────────────────────────── */
+#shell{display:flex;flex-direction:column;height:100vh}
+
+/* ── Top bar ───────────────────────────────────────────────── */
+#topbar{background:linear-gradient(135deg,var(--blue),#283593);color:#fff;padding:.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#topbar .brand{display:flex;align-items:center;gap:.7rem;font-size:1.1rem;font-weight:700}
+#topbar .brand span{font-size:1.6rem}
+#slide-title{font-size:.9rem;opacity:.85;max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#slide-counter{font-size:.85rem;opacity:.75;white-space:nowrap}
+
+/* ── Progress bar ──────────────────────────────────────────── */
+#progress-wrap{height:4px;background:rgba(255,255,255,.2);flex-shrink:0}
+#progress-bar{height:100%;background:linear-gradient(90deg,#64b5f6,#81d4fa);transition:width .4s ease}
+
+/* ── Sidebar ───────────────────────────────────────────────── */
+#layout{display:flex;flex:1;overflow:hidden}
+#sidebar{width:220px;background:#1a237e;color:#fff;overflow-y:auto;flex-shrink:0;padding:.5rem 0}
+.nav-item{padding:.55rem 1rem;font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:.6rem;border-left:3px solid transparent;transition:all .15s;line-height:1.3}
+.nav-item:hover{background:rgba(255,255,255,.1)}
+.nav-item.active{background:rgba(255,255,255,.15);border-left-color:#64b5f6;font-weight:600}
+.nav-item .num{background:rgba(255,255,255,.2);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0}
+.nav-item.done .num{background:#2e7d32}
+.nav-group{padding:.4rem 1rem .2rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;opacity:.55;margin-top:.3rem}
+
+/* ── Main content ──────────────────────────────────────────── */
+#main{flex:1;overflow:hidden;position:relative}
+.slide{position:absolute;inset:0;overflow-y:auto;padding:1.8rem 2.2rem;opacity:0;transform:translateX(40px);transition:opacity .35s,transform .35s;pointer-events:none}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.exit-left{opacity:0;transform:translateX(-40px)}
+
+/* ── Slide typography ──────────────────────────────────────── */
+.slide-hero{display:flex;align-items:center;gap:1.4rem;margin-bottom:1.6rem}
+.slide-icon{font-size:3rem;flex-shrink:0}
+.slide h1{font-size:1.6rem;color:var(--blue);line-height:1.2}
+.slide h1 small{display:block;font-size:.85rem;font-weight:400;color:var(--sub);margin-top:.25rem}
+.slide h2{font-size:1.1rem;color:var(--blue2);margin:1.3rem 0 .6rem;border-bottom:2px solid #e8eaf6;padding-bottom:.35rem}
+.slide p{line-height:1.65;color:var(--sub);margin-bottom:.7rem;font-size:.92rem}
+.slide ul,ol{padding-left:1.4rem;margin-bottom:.8rem}
+.slide li{margin:.35rem 0;line-height:1.55;font-size:.9rem;color:var(--sub)}
+.slide li strong{color:var(--text)}
+.slide b,.slide strong{color:var(--text)}
+
+/* ── Steps ─────────────────────────────────────────────────── */
+.steps{display:flex;flex-direction:column;gap:.8rem;margin:1rem 0}
+.step{display:flex;gap:1rem;align-items:flex-start;background:var(--card);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 2px 6px rgba(0,0,0,.07);border-left:4px solid var(--blue2)}
+.step-num{background:var(--blue2);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;margin-top:.05rem}
+.step-body h3{font-size:.92rem;font-weight:600;color:var(--blue);margin-bottom:.25rem}
+.step-body p{font-size:.85rem;color:var(--sub);line-height:1.5;margin:0}
+
+/* ── Code blocks ───────────────────────────────────────────── */
+.code-block{background:var(--code-bg);border-radius:10px;margin:.8rem 0;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem .9rem;background:#181825;font-size:.75rem;color:#a6adc8}
+.code-header .dots span{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.code-header .dots .r{background:#f38ba8}
+.code-header .dots .y{background:#f9e2af}
+.code-header .dots .g{background:#a6e3a1}
+.code-header .lang{background:#313244;padding:.15rem .55rem;border-radius:4px;font-size:.72rem}
+.copy-btn{background:#313244;border:none;color:#cdd6f4;padding:.2rem .6rem;border-radius:4px;cursor:pointer;font-size:.72rem;transition:background .15s}
+.copy-btn:hover{background:#45475a}
+.code-body{padding:1rem 1.2rem;overflow-x:auto}
+.code-body pre{font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:.82rem;line-height:1.65;color:var(--code-text);white-space:pre}
+.kw{color:#cba6f7}.cmd{color:#89b4fa}.str{color:#a6e3a1}.cmt{color:#585b70;font-style:italic}
+.flag{color:#f9e2af}.num2{color:#fab387}.err{color:#f38ba8}.ok{color:#a6e3a1}
+.hl{background:rgba(255,255,255,.07);display:block;margin:0 -1.2rem;padding:0 1.2rem}
+
+/* ── Cards grid ────────────────────────────────────────────── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;margin:1rem 0}
+.info-card{background:var(--card);border-radius:10px;padding:1rem 1.1rem;box-shadow:0 2px 6px rgba(0,0,0,.08);border-top:4px solid var(--blue2)}
+.info-card .ic-icon{font-size:1.6rem;margin-bottom:.5rem}
+.info-card h3{font-size:.9rem;font-weight:600;color:var(--blue);margin-bottom:.3rem}
+.info-card p{font-size:.8rem;color:var(--sub);line-height:1.5}
+
+/* ── Badges ────────────────────────────────────────────────── */
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:20px;font-size:.73rem;font-weight:600;color:#fff;margin:.1rem}
+.b-critical{background:#c62828}.b-error{background:#e65100}.b-warning{background:#f9a825;color:#333}
+.b-info{background:#0288d1}.b-security{background:#6a1b9a}.b-design{background:#1565c0}
+.b-pass{background:#2e7d32}.b-fail{background:#c62828}
+
+/* ── Terminal ──────────────────────────────────────────────── */
+.terminal{background:#0d1117;border-radius:10px;padding:1rem 1.2rem;margin:.8rem 0;font-family:'Cascadia Code','Consolas',monospace;font-size:.8rem;line-height:1.7;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.terminal .prompt{color:#58a6ff}
+.terminal .out{color:#8b949e}
+.terminal .success{color:#3fb950}
+.terminal .warn{color:#f9a825}
+.terminal .danger{color:#f38ba8}
+
+/* ── Table ─────────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;font-size:.83rem;margin:.8rem 0}
+.tbl th{background:var(--blue);color:#fff;padding:.5rem .8rem;text-align:left}
+.tbl td{padding:.45rem .8rem;border-bottom:1px solid #e9ecef;color:var(--sub)}
+.tbl tr:nth-child(even) td{background:#f8f9ff}
+.tbl td strong{color:var(--text)}
+
+/* ── Quiz / callout ────────────────────────────────────────── */
+.callout{border-radius:10px;padding:1rem 1.2rem;margin:.8rem 0;display:flex;gap:.8rem;align-items:flex-start;font-size:.87rem;line-height:1.55}
+.callout.tip{background:#e8f5e9;border-left:4px solid #2e7d32;color:#1b5e20}
+.callout.warn{background:#fff8e1;border-left:4px solid #f9a825;color:#5d4037}
+.callout.info{background:#e3f2fd;border-left:4px solid #1565c0;color:#0d47a1}
+.callout.danger{background:#fce4ec;border-left:4px solid #c62828;color:#880e4f}
+.callout .ci{font-size:1.3rem;flex-shrink:0}
+
+/* ── Welcome hero ──────────────────────────────────────────── */
+.welcome-hero{text-align:center;padding:2rem 1rem;background:linear-gradient(135deg,var(--blue),#283593);border-radius:14px;color:#fff;margin-bottom:1.5rem}
+.welcome-hero .wh-icon{font-size:4rem;margin-bottom:.8rem}
+.welcome-hero h1{font-size:2rem;margin-bottom:.5rem}
+.welcome-hero p{opacity:.8;font-size:.95rem}
+.welcome-hero .wh-tags{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}
+.welcome-hero .wh-tags span{background:rgba(255,255,255,.15);padding:.25rem .8rem;border-radius:20px;font-size:.78rem}
+
+/* ── Comparison ─────────────────────────────────────────────── */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.8rem 0}
+.compare-col{background:var(--card);border-radius:10px;padding:1rem;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+.compare-col h3{font-size:.9rem;font-weight:600;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+.compare-col ul{list-style:none;padding:0}
+.compare-col li{font-size:.82rem;color:var(--sub);padding:.25rem 0;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;gap:.5rem}
+
+/* ── Bottom nav ─────────────────────────────────────────────── */
+#bottomnav{background:var(--card);border-top:1px solid #e0e0e0;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+.nav-btn{padding:.5rem 1.3rem;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;transition:all .15s;display:flex;align-items:center;gap:.4rem}
+#btn-prev{background:#f0f2f5;color:var(--blue2)}
+#btn-prev:hover{background:#e8eaf6}
+#btn-next{background:var(--blue2);color:#fff}
+#btn-next:hover{background:var(--blue)}
+#btn-prev:disabled,#btn-next:disabled{opacity:.35;cursor:not-allowed}
+.slide-dots{display:flex;gap:.35rem}
+.dot{width:8px;height:8px;border-radius:50%;background:#ddd;transition:all .2s;cursor:pointer}
+.dot.active{background:var(--blue2);width:20px;border-radius:4px}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f5f5f5}
+::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media(max-width:700px){#sidebar{display:none}.slide{padding:1rem 1rem}}
+</style>
+</head>
+<body>
+<div id="shell">
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand"><span>⬡</span> CodeAnalyzer Pro</div>
+  <div id="slide-title">Welcome</div>
+  <div id="slide-counter">1 / 12</div>
+</div>
+<div id="progress-wrap"><div id="progress-bar"></div></div>
+
+<!-- LAYOUT -->
+<div id="layout">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="nav-group">Getting Started</div>
+    <div class="nav-item active" data-slide="0"><div class="num">1</div>Welcome</div>
+    <div class="nav-item" data-slide="1"><div class="num">2</div>Prerequisites</div>
+    <div class="nav-item" data-slide="2"><div class="num">3</div>Build &amp; Install</div>
+    <div class="nav-group">Using the CLI</div>
+    <div class="nav-item" data-slide="3"><div class="num">4</div>First Analysis</div>
+    <div class="nav-item" data-slide="4"><div class="num">5</div>All CLI Flags</div>
+    <div class="nav-item" data-slide="5"><div class="num">6</div>Quality Gate</div>
+    <div class="nav-group">Reports</div>
+    <div class="nav-item" data-slide="6"><div class="num">7</div>Excel Report</div>
+    <div class="nav-item" data-slide="7"><div class="num">8</div>HTML Dashboard</div>
+    <div class="nav-item" data-slide="8"><div class="num">9</div>JSON Report</div>
+    <div class="nav-group">Advanced</div>
+    <div class="nav-item" data-slide="9"><div class="num">10</div>Writing a Rule</div>
+    <div class="nav-item" data-slide="10"><div class="num">11</div>CI/CD Setup</div>
+    <div class="nav-item" data-slide="11"><div class="num">12</div>Next Steps</div>
+  </div>
+
+  <!-- SLIDES -->
+  <div id="main">
+
+    <!-- ══ SLIDE 1: WELCOME ══════════════════════════════════════ -->
+    <div class="slide active" id="slide-0">
+      <div class="welcome-hero">
+        <div class="wh-icon">⬡</div>
+        <h1>CodeAnalyzer Pro</h1>
+        <p>Enterprise C# Static Analysis — Interactive Tutorial</p>
+        <div class="wh-tags">
+          <span>55+ Rules</span><span>Security · Design · Efficiency</span>
+          <span>Quality Gate</span><span>Excel · HTML · JSON Reports</span>
+          <span>Git &amp; SVN Integration</span><span>CI/CD Ready</span>
+        </div>
+      </div>
+
+      <h2>What you will learn</h2>
+      <div class="card-grid">
+        <div class="info-card" style="border-color:#c62828">
+          <div class="ic-icon">🔒</div>
+          <h3>Security Analysis</h3>
+          <p>Find SQL Injection, XSS, Path Traversal, and hardcoded secrets before attackers do.</p>
+        </div>
+        <div class="info-card" style="border-color:#1565c0">
+          <div class="ic-icon">📊</div>
+          <h3>Rich Reports</h3>
+          <p>Generate interactive HTML dashboards, multi-sheet Excel, and CI/CD-ready JSON reports.</p>
+        </div>
+        <div class="info-card" style="border-color:#2e7d32">
+          <div class="ic-icon">✔</div>
+          <h3>Quality Gate</h3>
+          <p>Automatically pass or fail your build based on issue thresholds — just like SonarQube.</p>
+        </div>
+        <div class="info-card" style="border-color:#6a1b9a">
+          <div class="ic-icon">⚙</div>
+          <h3>Custom Rules</h3>
+          <p>Write a new rule in minutes — no registration, just implement IRule and it's live.</p>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ci">💡</div>
+        <div>Use <strong>← → arrow keys</strong> or the <strong>Next / Prev buttons</strong> below to navigate. Click any topic in the left sidebar to jump directly.</div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 2: PREREQUISITES ════════════════════════════════ -->
+    <div class="slide" id="slide-1">
+      <div class="slide-hero">
+        <div class="slide-icon">📋</div>
+        <h1>Prerequisites<small>What you need before getting started</small></h1>
+      </div>
+
+      <h2>Required</h2>
+      <table class="tbl">
+        <tr><th>Tool</th><th>Version</th><th>Purpose</th><th>Check</th></tr>
+        <tr><td><strong>.NET SDK</strong></td><td>8.0 or higher</td><td>Build and run the analyzer</td><td><code>dotnet --version</code></td></tr>
+        <tr><td><strong>Git</strong></td><td>Any</td><td>Git diff mode, repo cloning</td><td><code>git --version</code></td></tr>
+        <tr><td><strong>Visual Studio</strong></td><td>2022+ (optional)</td><td>IDE with inline diagnostics via VSIX</td><td>—</td></tr>
+      </table>
+
+      <h2>Optional (JavaScript analysis)</h2>
+      <table class="tbl">
+        <tr><th>Tool</th><th>How to install</th></tr>
+        <tr><td><strong>Node.js</strong></td><td><code>winget install OpenJS.NodeJS</code></td></tr>
+        <tr><td><strong>ESLint</strong></td><td><code>cd CodeReviewReporter/NodeAnalyzer &amp;&amp; npm install</code></td></tr>
+      </table>
+
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Verify your environment</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmd">dotnet</span> <span class="flag">--version</span>      <span class="cmt"># should show 8.x.x or higher</span>
+<span class="cmd">git</span> <span class="flag">--version</span>         <span class="cmt"># any version</span>
+<span class="cmd">node</span> <span class="flag">--version</span>        <span class="cmt"># optional, for JS analysis</span></pre></div>
+      </div>
+
+      <h2>Repository Structure</h2>
+      <div class="terminal">
+        <div><span class="prompt">E:\BackUp\TarunPractice\Analyzer1\</span></div>
+        <div><span class="out">├── Analyzer.Core/          ← Core contracts (IRule, CodeIssue, models)</span></div>
+        <div><span class="out">├── Analyzer1.Rules/        ← 55+ built-in rules</span></div>
+        <div><span class="out">├── Analyzer.RoslynEngine/  ← Roslyn compilation engine</span></div>
+        <div><span class="out">├── CodeReviewReporter/     ← ★ CLI tool — use this daily</span></div>
+        <div><span class="out">├── Analyzer1.API/          ← REST API (ASP.NET Core 8)</span></div>
+        <div><span class="out">├── Analyzer1.UI/           ← Blazor dashboard</span></div>
+        <div><span class="out">└── Analyzer1.sln           ← Solution file</span></div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 3: BUILD ════════════════════════════════════════ -->
+    <div class="slide" id="slide-2">
+      <div class="slide-hero">
+        <div class="slide-icon">🔨</div>
+        <h1>Build &amp; Install<small>Get the analyzer ready in 3 steps</small></h1>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Clone or open the repository</h3>
+            <p>Open a terminal and navigate to the solution folder.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Restore NuGet packages and build</h3>
+            <p>This compiles all projects. The first build may take 1–2 minutes to download packages.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Verify with a test run</h3>
+            <p>Run the CLI with <code>--help</code> to confirm everything is working.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Build commands</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmt"># Step 1 — navigate to the solution</span>
+<span class="cmd">cd</span> <span class="str">"E:\BackUp\TarunPractice\Analyzer1"</span>
+
+<span class="cmt"># Step 2 — build the full solution</span>
+<span class="cmd">dotnet</span> build Analyzer1.sln
+
+<span class="cmt"># Step 3 — verify the CLI</span>
+<span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> <span class="flag">--help</span></pre></div>
+      </div>
+
+      <h2>Expected output</h2>
+      <div class="terminal">
+        <div><span class="prompt">$</span> dotnet run --project CodeReviewReporter -- --help</div>
+        <div><span class="success">CodeAnalyzer Pro — Static Code Analyzer</span></div>
+        <div><span class="out">========================================</span></div>
+        <div><span class="out">Usage:</span></div>
+        <div><span class="out">  --path &lt;folder&gt;       Analyze all .cs files in a folder</span></div>
+        <div><span class="out">  --git                 Analyze the latest git diff</span></div>
+        <div><span class="out">  --svn                 Analyze the current SVN diff</span></div>
+        <div><span class="out">  --html                Generate HTML report</span></div>
+        <div><span class="out">  --json                Generate JSON report</span></div>
+        <div><span class="out">  --fail-on-gate        Return exit code 1 on gate failure</span></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ci">💡</div>
+        <div>The VSIX project may show 2 build errors — this is normal on .NET Core MSBuild (it requires Visual Studio's MSBuild). All other projects build cleanly.</div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 4: FIRST ANALYSIS ══════════════════════════════ -->
+    <div class="slide" id="slide-3">
+      <div class="slide-hero">
+        <div class="slide-icon">🚀</div>
+        <h1>Your First Analysis<small>Analyze a project folder in one command</small></h1>
+      </div>
+
+      <div class="callout info">
+        <div class="ci">ℹ</div>
+        <div>The most common use case — point the analyzer at any C# project folder and get a full report in seconds.</div>
+      </div>
+
+      <h2>Basic folder analysis</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Analyze a folder</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> \
+  <span class="flag">--path</span> <span class="str">"C:\MyProject"</span> \
+  <span class="flag">--html</span> \
+  <span class="flag">--json</span></pre></div>
+      </div>
+
+      <h2>What happens step by step</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><h3>File discovery</h3><p>All <code>.cs</code> files are found recursively, excluding <code>\bin\</code> and <code>\obj\</code> folders.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><h3>Cache check</h3><p>Each file's SHA-256 hash is compared to <code>analysis_cache.json</code>. Unchanged files are skipped instantly.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><h3>Dual pipeline analysis</h3><p>Roslyn DiagnosticAnalyzers + 55 custom IRule rules run in parallel (CPU-bounded) for each file.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body"><h3>Quality Gate evaluation</h3><p>Critical and error counts are checked against thresholds. Result: PASSED ✔ or FAILED ✘.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body"><h3>Reports generated</h3><p><code>CodeReviewIssues.xlsx</code> always. <code>CodeReviewReport.html</code> and <code>CodeReviewReport.json</code> when requested.</p></div>
+        </div>
+      </div>
+
+      <h2>Other analysis modes</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>All modes</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmt"># Analyze only the last git commit (fastest for PR reviews)</span>
+<span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> <span class="flag">--git</span> <span class="flag">--html</span>
+
+<span class="cmt"># Analyze SVN working copy changes</span>
+<span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> <span class="flag">--svn</span>
+
+<span class="cmt"># Analyze a saved diff file</span>
+<span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> <span class="flag">--file</span> <span class="str">my-changes.diff</span>
+
+<span class="cmt"># Clone and analyze a remote git repository</span>
+<span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> <span class="flag">--repo</span> <span class="str">https://github.com/org/repo</span> <span class="flag">--html</span></pre></div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 5: CLI FLAGS ════════════════════════════════════ -->
+    <div class="slide" id="slide-4">
+      <div class="slide-hero">
+        <div class="slide-icon">⌨</div>
+        <h1>All CLI Flags<small>Complete reference for every option</small></h1>
+      </div>
+
+      <h2>Input modes (pick one)</h2>
+      <table class="tbl">
+        <tr><th>Flag</th><th>Argument</th><th>What it does</th></tr>
+        <tr><td><code>--path</code></td><td>&lt;folder&gt;</td><td>Analyze all .cs files in a directory recursively</td></tr>
+        <tr><td><code>--git</code></td><td>—</td><td>Analyze <code>git diff HEAD~1 HEAD</code> (last commit)</td></tr>
+        <tr><td><code>--svn</code></td><td>—</td><td>Analyze <code>svn diff</code> (working copy changes)</td></tr>
+        <tr><td><code>--file</code></td><td>&lt;path&gt;</td><td>Analyze a saved diff file (.diff / .patch)</td></tr>
+        <tr><td><code>--repo</code></td><td>&lt;git-url&gt;</td><td>Clone a remote repo (shallow) and analyze it</td></tr>
+      </table>
+
+      <h2>Output flags</h2>
+      <table class="tbl">
+        <tr><th>Flag</th><th>Output file</th><th>Description</th></tr>
+        <tr><td><code>--html</code></td><td>CodeReviewReport.html</td><td>Interactive SonarQube-style dashboard</td></tr>
+        <tr><td><code>--json</code></td><td>CodeReviewReport.json</td><td>Machine-readable JSON for CI/CD</td></tr>
+        <tr><td>always</td><td>CodeReviewIssues.xlsx</td><td>Multi-sheet Excel with Summary + Issues</td></tr>
+      </table>
+
+      <h2>Quality Gate flags</h2>
+      <table class="tbl">
+        <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>--max-critical</code></td><td>0</td><td>Max allowed Critical issues before gate fails</td></tr>
+        <tr><td><code>--max-errors</code></td><td>5</td><td>Max allowed Error issues before gate fails</td></tr>
+        <tr><td><code>--fail-on-gate</code></td><td>off</td><td>Return exit code 1 when gate fails (CI/CD)</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ci">⚠</div>
+        <div>Always use <code>--fail-on-gate</code> in your CI pipeline so that builds with critical security issues are automatically blocked.</div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 6: QUALITY GATE ════════════════════════════════ -->
+    <div class="slide" id="slide-5">
+      <div class="slide-hero">
+        <div class="slide-icon">✔</div>
+        <h1>Quality Gate<small>Automatically pass or fail your build</small></h1>
+      </div>
+
+      <p>The Quality Gate is a configurable pass/fail checkpoint — the same concept as SonarQube's Quality Gate. It prevents bad code from merging when issues exceed your thresholds.</p>
+
+      <div class="compare">
+        <div class="compare-col" style="border-top:4px solid #2e7d32">
+          <h3 style="color:#2e7d32">✔ PASSED</h3>
+          <ul>
+            <li>✅ 0 critical issues (≤ max-critical)</li>
+            <li>✅ 3 error issues (≤ max-errors: 5)</li>
+            <li>✅ Build continues normally</li>
+            <li>✅ Exit code: <strong>0</strong></li>
+          </ul>
+        </div>
+        <div class="compare-col" style="border-top:4px solid #c62828">
+          <h3 style="color:#c62828">✘ FAILED</h3>
+          <ul>
+            <li>❌ 3 critical issues (> max-critical: 0)</li>
+            <li>❌ 12 error issues (> max-errors: 5)</li>
+            <li>❌ Failure reasons listed</li>
+            <li>❌ Exit code: <strong>1</strong> (with --fail-on-gate)</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>Example — Strict CI pipeline</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Zero-tolerance gate</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmd">dotnet</span> run <span class="flag">--project</span> CodeReviewReporter <span class="flag">--</span> \
+  <span class="flag">--git</span> \
+  <span class="flag">--max-critical</span> <span class="num2">0</span> \
+  <span class="flag">--max-errors</span> <span class="num2">0</span> \
+  <span class="flag">--fail-on-gate</span> \
+  <span class="flag">--html</span></pre></div>
+      </div>
+
+      <h2>Console output when gate FAILS</h2>
+      <div class="terminal">
+        <div><span class="out">─────────────────────────────────────────</span></div>
+        <div><span class="out">  Analysis complete in 8.3s</span></div>
+        <div><span class="out">  Total issues  : 187</span></div>
+        <div><span class="danger">  Critical      : 3</span></div>
+        <div><span class="warn">  Error         : 12</span></div>
+        <div><span class="out">─────────────────────────────────────────</span></div>
+        <div>&nbsp;</div>
+        <div><span class="danger">  ✘  Quality Gate: FAILED</span></div>
+        <div><span class="danger">     · Critical issues: 3 (max allowed: 0)</span></div>
+        <div><span class="danger">     · Error issues: 12 (max allowed: 0)</span></div>
+      </div>
+
+      <h2>Exit codes</h2>
+      <table class="tbl">
+        <tr><th>Code</th><th>Meaning</th></tr>
+        <tr><td><strong>0</strong></td><td>Success — analysis complete, gate passed (or --fail-on-gate not set)</td></tr>
+        <tr><td><strong>1</strong></td><td>Quality Gate FAILED (only when --fail-on-gate is used)</td></tr>
+        <tr><td><strong>2</strong></td><td>Fatal error — missing path, exception, bad arguments</td></tr>
+      </table>
+    </div>
+
+    <!-- ══ SLIDE 7: EXCEL REPORT ════════════════════════════════ -->
+    <div class="slide" id="slide-6">
+      <div class="slide-hero">
+        <div class="slide-icon">📗</div>
+        <h1>Excel Report<small>CodeReviewIssues.xlsx — always generated</small></h1>
+      </div>
+
+      <p>The Excel report has <strong>two worksheets</strong>. The Summary sheet opens first and gives you an at-a-glance health check. The Code Review sheet has every issue with full details.</p>
+
+      <h2>Sheet 1 — Summary</h2>
+      <div class="card-grid">
+        <div class="info-card" style="border-color:#1565c0">
+          <div class="ic-icon">📊</div>
+          <h3>Severity Breakdown</h3>
+          <p>Color-coded counts: Critical (pink) → Error (salmon) → Warning (yellow) → Info (blue)</p>
+        </div>
+        <div class="info-card" style="border-color:#6a1b9a">
+          <div class="ic-icon">📂</div>
+          <h3>By Category</h3>
+          <p>Security, Design, Maintainability, Efficiency — see where most issues are concentrated.</p>
+        </div>
+        <div class="info-card" style="border-color:#e65100">
+          <div class="ic-icon">⏱</div>
+          <h3>Technical Debt</h3>
+          <p>Estimated fix effort displayed as days/hours (e.g. "2d 4h").</p>
+        </div>
+      </div>
+
+      <h2>Sheet 2 — Code Review (10 columns)</h2>
+      <table class="tbl">
+        <tr><th>#</th><th>Column</th><th>Description</th></tr>
+        <tr><td>1</td><td><strong>File</strong></td><td>Source file path</td></tr>
+        <tr><td>2</td><td><strong>Line</strong></td><td>Exact line number (1-based)</td></tr>
+        <tr><td>3</td><td><strong>Rule Id</strong></td><td>e.g. <code>SEC001</code>, <code>DES003</code></td></tr>
+        <tr><td>4</td><td><strong>Category</strong></td><td>Security / Design / Maintainability …</td></tr>
+        <tr><td>5</td><td><strong>Severity</strong></td><td>Color-coded: pink = Critical, yellow = Warning</td></tr>
+        <tr><td>6</td><td><strong>Message</strong></td><td>Human-readable issue description</td></tr>
+        <tr><td>7</td><td><strong>Code</strong></td><td>The actual line of code that triggered the rule</td></tr>
+        <tr><td>8</td><td><strong>Suggested Fix</strong></td><td>How to fix it (remediation guidance)</td></tr>
+        <tr><td>9</td><td><strong>Reviewer Comment</strong></td><td>Rule description / additional context</td></tr>
+        <tr><td>10</td><td><strong>Status</strong></td><td>"Open" — update manually as you resolve issues</td></tr>
+      </table>
+
+      <div class="callout tip">
+        <div class="ci">💡</div>
+        <div>Use Excel's built-in <strong>AutoFilter</strong> (already enabled) to filter by Severity = "Critical" and assign critical issues to developers first.</div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 8: HTML DASHBOARD ══════════════════════════════ -->
+    <div class="slide" id="slide-7">
+      <div class="slide-hero">
+        <div class="slide-icon">🌐</div>
+        <h1>HTML Dashboard<small>CodeReviewReport.html — open in any browser</small></h1>
+      </div>
+
+      <p>The HTML report is a <strong>self-contained single file</strong> — no server, no internet needed. Share it by email or attach it to a Jira ticket.</p>
+
+      <h2>Dashboard sections</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background:#c62828">!</div>
+          <div class="step-body"><h3>Quality Gate Badge</h3><p>Large PASSED (green) or FAILED (red) badge at the top-right — the first thing your team sees.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">📊</div>
+          <div class="step-body"><h3>6 Metric Cards</h3><p>Total Issues · Critical · Error · Warning · Info · Technical Debt — each color-coded by severity.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">📈</div>
+          <div class="step-body"><h3>Issues by Category (bar chart)</h3><p>Horizontal bars showing which categories have the most issues — identify where to focus first.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">🗂</div>
+          <div class="step-body"><h3>Top Files by Issue Count</h3><p>The 8 most problematic files — perfect for prioritizing code review focus.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔍</div>
+          <div class="step-body"><h3>Filterable Issues Table</h3><p>Search by text · Filter by severity · Filter by category · Export visible rows as CSV.</p></div>
+        </div>
+      </div>
+
+      <h2>How to use the table filters</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Workflow in the HTML report</span><div class="lang">steps</div></div>
+        <div class="code-body"><pre><span class="ok">1.</span> Open CodeReviewReport.html in Chrome / Edge / Firefox
+<span class="ok">2.</span> Set Severity filter → "Critical"  to see only blockers
+<span class="ok">3.</span> Set Category filter → "Security"  to focus security issues
+<span class="ok">4.</span> Type in Search box  → "UserService" to find issues in one file
+<span class="ok">5.</span> Click "Export CSV"  → download filtered results for the team</pre></div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 9: JSON REPORT ══════════════════════════════════ -->
+    <div class="slide" id="slide-8">
+      <div class="slide-hero">
+        <div class="slide-icon">{ }</div>
+        <h1>JSON Report<small>CodeReviewReport.json — machine-readable for CI/CD</small></h1>
+      </div>
+
+      <h2>Report structure</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>CodeReviewReport.json</span><div class="lang">json</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre>{
+  <span class="str">"generatedAt"</span>: <span class="str">"2026-04-29T10:22:05Z"</span>,
+  <span class="str">"totalIssues"</span>: <span class="num2">187</span>,
+  <span class="str">"summary"</span>: {
+    <span class="str">"critical"</span>: <span class="num2">3</span>,
+    <span class="str">"error"</span>:    <span class="num2">12</span>,
+    <span class="str">"major"</span>:    <span class="num2">8</span>,
+    <span class="str">"warning"</span>:  <span class="num2">94</span>,
+    <span class="str">"info"</span>:     <span class="num2">70</span>
+  },
+  <span class="str">"byCategory"</span>: {
+    <span class="str">"Security"</span>:        <span class="num2">3</span>,
+    <span class="str">"Maintainability"</span>: <span class="num2">47</span>,
+    <span class="str">"Design"</span>:          <span class="num2">31</span>
+  },
+  <span class="str">"issues"</span>: [
+    {
+      <span class="str">"fileName"</span>:   <span class="str">"UserService.cs"</span>,
+      <span class="str">"lineNumber"</span>: <span class="num2">42</span>,
+      <span class="str">"ruleId"</span>:     <span class="str">"SEC001"</span>,
+      <span class="str">"category"</span>:   <span class="str">"Security"</span>,
+      <span class="str">"severity"</span>:   <span class="str">"Critical"</span>,
+      <span class="str">"message"</span>:    <span class="str">"Possible SQL Injection via string concatenation."</span>,
+      <span class="str">"suggestedFix"</span>: <span class="str">"Use parameterized queries or Entity Framework."</span>
+    }
+  ]
+}</pre></div>
+      </div>
+
+      <h2>Query the JSON in CI</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>GitHub Actions — block on critical issues</span><div class="lang">bash</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="cmt"># Fail the pipeline if any Critical issues exist</span>
+<span class="kw">CRITICAL</span>=$(cat CodeReviewReport.json | jq <span class="str">'.summary.critical'</span>)
+<span class="kw">if</span> [ <span class="str">"$CRITICAL"</span> <span class="flag">-gt</span> <span class="num2">0</span> ]; <span class="kw">then</span>
+  echo <span class="str">"❌ $CRITICAL critical issues found — build blocked"</span>
+  exit <span class="num2">1</span>
+<span class="kw">fi</span></pre></div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 10: WRITING A RULE ═════════════════════════════ -->
+    <div class="slide" id="slide-9">
+      <div class="slide-hero">
+        <div class="slide-icon">⚙</div>
+        <h1>Writing a Custom Rule<small>Add a new rule in under 5 minutes</small></h1>
+      </div>
+
+      <div class="callout tip">
+        <div class="ci">💡</div>
+        <div>No registration or config change needed. Create the class → build → run. <strong>RuleLoader discovers it automatically via reflection.</strong></div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><h3>Create the file</h3><p>Add a new <code>.cs</code> file in <code>Analyzer1.Rules/&lt;Category&gt;/</code></p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><h3>Implement IRule</h3><p>Fill in <code>Metadata</code> (RuleId, Title, Severity, Remediation) and the <code>Analyze()</code> method.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><h3>Build and run</h3><p>The rule is live immediately — no restart, no config file changes.</p></div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>Analyzer1.Rules/Design/TooManyPropertiesRule.cs</span><div class="lang">C#</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="kw">using</span> Analyzer.Core.Enums;
+<span class="kw">using</span> Analyzer.Core.Interfaces;
+<span class="kw">using</span> Analyzer.Core.Models;
+<span class="kw">using</span> Analyzer.Rules.Attributes;
+<span class="kw">using</span> Microsoft.CodeAnalysis.CSharp.Syntax;
+
+<span class="kw">namespace</span> Analyzer.Rules.Design
+{
+    [RuleCategory(<span class="str">"Design"</span>)]
+    <span class="kw">public class</span> TooManyPropertiesRule : IRule
+    {
+        <span class="kw">private const int</span> MaxProperties = <span class="num2">15</span>;
+
+        <span class="kw">public</span> RuleMetadata Metadata => <span class="kw">new</span> RuleMetadata
+        {
+            RuleId          = <span class="str">"DES008"</span>,
+            Title           = <span class="str">"Class has too many properties"</span>,
+            Category        = <span class="str">"Design"</span>,
+            DefaultSeverity = Severity.Warning,
+            Remediation     = <span class="str">"Split the class into smaller focused classes."</span>,
+            EffortMinutes   = <span class="num2">30</span>,
+            Tags            = <span class="kw">new</span>[] { <span class="str">"design"</span>, <span class="str">"srp"</span> }
+        };
+
+        <span class="kw">public</span> IEnumerable&lt;CodeIssue&gt; Analyze(AnalysisContext context)
+        {
+            <span class="kw">if</span> (context.SyntaxRoot == <span class="kw">null</span>) <span class="kw">yield break</span>;
+
+            <span class="kw">foreach</span> (<span class="kw">var</span> cls <span class="kw">in</span> context.SyntaxRoot
+                .DescendantNodes().OfType&lt;ClassDeclarationSyntax&gt;())
+            {
+                <span class="kw">int</span> count = cls.DescendantNodes()
+                    .OfType&lt;PropertyDeclarationSyntax&gt;().Count();
+
+                <span class="kw">if</span> (count > MaxProperties)
+                    <span class="kw">yield return new</span> CodeIssue
+                    {
+                        RuleId      = Metadata.RuleId,
+                        Message     = <span class="str">$"Class '{cls.Identifier.Text}' has {count} properties."</span>,
+                        Line        = cls.GetLocation()
+                                        .GetLineSpan().StartLinePosition.Line + <span class="num2">1</span>,
+                        Severity    = Metadata.DefaultSeverity,
+                        Category    = Metadata.Category,
+                        Remediation = Metadata.Remediation
+                    };
+            }
+        }
+    }
+}</pre></div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 11: CI/CD ═══════════════════════════════════════ -->
+    <div class="slide" id="slide-10">
+      <div class="slide-hero">
+        <div class="slide-icon">🔄</div>
+        <h1>CI/CD Integration<small>Block bad merges automatically</small></h1>
+      </div>
+
+      <h2>GitHub Actions</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>.github/workflows/code-analysis.yml</span><div class="lang">yaml</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre><span class="kw">name</span>: <span class="str">Code Analysis</span>
+<span class="kw">on</span>: [push, pull_request]
+
+<span class="kw">jobs</span>:
+  <span class="kw">analyze</span>:
+    <span class="kw">runs-on</span>: windows-latest
+    <span class="kw">steps</span>:
+      - <span class="kw">uses</span>: actions/checkout@v4
+
+      - <span class="kw">name</span>: <span class="str">Setup .NET</span>
+        <span class="kw">uses</span>: actions/setup-dotnet@v4
+        <span class="kw">with</span>: { <span class="kw">dotnet-version</span>: <span class="str">'8.0.x'</span> }
+
+      - <span class="kw">name</span>: <span class="str">Build</span>
+        <span class="kw">run</span>: dotnet build Analyzer1.sln
+
+      - <span class="kw">name</span>: <span class="str">Run CodeAnalyzer Pro</span>
+        <span class="kw">run</span>: |
+          dotnet run --project CodeReviewReporter -- \
+            --path <span class="str">${{ github.workspace }}</span> \
+            --html --json \
+            --max-critical 0 --max-errors 10 \
+            --fail-on-gate
+
+      - <span class="kw">name</span>: <span class="str">Upload Reports</span>
+        <span class="kw">if</span>: always()
+        <span class="kw">uses</span>: actions/upload-artifact@v4
+        <span class="kw">with</span>:
+          <span class="kw">name</span>: code-analysis-report
+          <span class="kw">path</span>: |
+            CodeReviewReport.html
+            CodeReviewReport.json
+            CodeReviewIssues.xlsx</pre></div>
+      </div>
+
+      <h2>Azure DevOps</h2>
+      <div class="code-block">
+        <div class="code-header"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span>azure-pipelines.yml</span><div class="lang">yaml</div><button class="copy-btn" onclick="copy(this)">Copy</button></div>
+        <div class="code-body"><pre>- <span class="kw">task</span>: DotNetCoreCLI@2
+  <span class="kw">displayName</span>: <span class="str">'CodeAnalyzer Pro'</span>
+  <span class="kw">inputs</span>:
+    <span class="kw">command</span>: run
+    <span class="kw">projects</span>: <span class="str">'CodeReviewReporter/CodeReviewReporter.csproj'</span>
+    <span class="kw">arguments</span>: >
+      -- --path <span class="str">$(Build.SourcesDirectory)</span>
+         --html --json
+         --max-critical 0
+         --fail-on-gate</pre></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ci">💡</div>
+        <div>Upload the HTML report as a build artifact so developers can review it directly from the pipeline run without cloning the repo.</div>
+      </div>
+    </div>
+
+    <!-- ══ SLIDE 12: NEXT STEPS ══════════════════════════════════ -->
+    <div class="slide" id="slide-11">
+      <div class="slide-hero">
+        <div class="slide-icon">🎯</div>
+        <h1>Next Steps<small>You're ready — here's what to do now</small></h1>
+      </div>
+
+      <h2>Immediate actions</h2>
+      <div class="steps">
+        <div class="step" style="border-color:#c62828">
+          <div class="step-num" style="background:#c62828">1</div>
+          <div class="step-body"><h3>Fix all Critical Security issues first</h3><p>Filter the report by Severity = Critical + Category = Security. These are exploitable vulnerabilities — SQL Injection, XSS, hardcoded credentials.</p></div>
+        </div>
+        <div class="step" style="border-color:#e65100">
+          <div class="step-num" style="background:#e65100">2</div>
+          <div class="step-body"><h3>Address empty catch blocks and missing dispose</h3><p>Stability issues hide real errors in production. Fix STAB001 (EmptyCatch) and STAB003 (MissingDispose) next.</p></div>
+        </div>
+        <div class="step" style="border-color:#1565c0">
+          <div class="step-num" style="background:#1565c0">3</div>
+          <div class="step-body"><h3>Set up CI/CD gate</h3><p>Add the GitHub Actions or Azure DevOps pipeline snippet. Set <code>--max-critical 0</code> so new security issues never merge.</p></div>
+        </div>
+        <div class="step" style="border-color:#2e7d32">
+          <div class="step-num" style="background:#2e7d32">4</div>
+          <div class="step-body"><h3>Run on git diff for PR reviews</h3><p>Use <code>--git</code> mode to analyze only changed files — fast enough to run on every pull request.</p></div>
+        </div>
+      </div>
+
+      <h2>Resources</h2>
+      <div class="card-grid">
+        <div class="info-card">
+          <div class="ic-icon">📖</div>
+          <h3>PRODUCT_DOCUMENTATION.md</h3>
+          <p>Full 14-section reference: architecture, all rules, configuration, API, roadmap.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">📋</div>
+          <h3>USER_GUIDE.md</h3>
+          <p>Step-by-step walkthrough with commands, screenshots placeholders, and team workflows.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🌐</div>
+          <h3>Swagger UI</h3>
+          <p>Start the API: <code>dotnet run --project Analyzer1.API</code> then open <code>https://localhost:7036/swagger</code></p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">⬡</div>
+          <h3>Blazor Dashboard</h3>
+          <p>Visual projects, issues, and rules management at <code>https://localhost:7036/</code></p>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ci">🎉</div>
+        <div><strong>Tutorial complete!</strong> You now know how to run analyses, read all three report formats, configure the quality gate, write custom rules, and set up CI/CD. Open <code>CodeReviewReport.html</code> to see your full analysis dashboard.</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- BOTTOM NAV -->
+<div id="bottomnav">
+  <button class="nav-btn" id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <div class="slide-dots" id="dots"></div>
+  <button class="nav-btn" id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+</div><!-- /shell -->
+
+<script>
+const TOTAL = 12;
+let cur = 0;
+
+const titles = [
+  'Welcome to CodeAnalyzer Pro',
+  'Prerequisites',
+  'Build & Install',
+  'Your First Analysis',
+  'All CLI Flags',
+  'Quality Gate',
+  'Excel Report',
+  'HTML Dashboard',
+  'JSON Report',
+  'Writing a Custom Rule',
+  'CI/CD Integration',
+  'Next Steps'
+];
+
+function render(){
+  // slides
+  document.querySelectorAll('.slide').forEach((s,i)=>{
+    s.classList.toggle('active', i===cur);
+  });
+  // nav items
+  document.querySelectorAll('.nav-item').forEach((n,i)=>{
+    n.classList.toggle('active', i===cur);
+    if(i<cur) n.classList.add('done'); else n.classList.remove('done');
+  });
+  // dots
+  document.querySelectorAll('.dot').forEach((d,i)=>{
+    d.classList.toggle('active', i===cur);
+  });
+  // top bar
+  document.getElementById('slide-title').textContent = titles[cur];
+  document.getElementById('slide-counter').textContent = (cur+1)+' / '+TOTAL;
+  // progress
+  document.getElementById('progress-bar').style.width = ((cur+1)/TOTAL*100)+'%';
+  // buttons
+  document.getElementById('btn-prev').disabled = cur===0;
+  document.getElementById('btn-next').disabled = cur===TOTAL-1;
+  document.getElementById('btn-next').textContent = cur===TOTAL-1 ? 'Finish ✔' : 'Next →';
+}
+
+function go(dir){
+  const next = cur+dir;
+  if(next<0||next>=TOTAL) return;
+  cur=next;
+  render();
+  document.getElementById('slide-'+cur).scrollTop=0;
+}
+
+// build dots
+const dotsEl = document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='dot';
+  d.title=titles[i];
+  d.onclick=()=>{cur=i;render();};
+  dotsEl.appendChild(d);
+}
+
+// sidebar click
+document.querySelectorAll('.nav-item').forEach(n=>{
+  n.onclick=()=>{cur=parseInt(n.dataset.slide);render();};
+});
+
+// keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') go(1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') go(-1);
+});
+
+// copy button
+function copy(btn){
+  const code = btn.closest('.code-block').querySelector('pre').innerText;
+  navigator.clipboard.writeText(code).then(()=>{
+    btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy',2000);
+  });
+}
+
+render();
+</script>
+</body>
+</html>

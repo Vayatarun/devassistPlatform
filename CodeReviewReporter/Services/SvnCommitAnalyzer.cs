@@ -117,6 +117,22 @@ namespace CodeReviewReporter.Services
 
             foreach (var line in diff.Split('\n'))
             {
+                // Bug 7 fix: detect both git and SVN diff file headers
+                // Git format:  "diff --git a/Foo.cs b/Foo.cs"
+                // SVN format:  "Index: Foo.cs"
+                if (line.StartsWith("diff --git "))
+                {
+                    if (builder.Length > 0)
+                    {
+                        result.Add((currentFile, builder.ToString()));
+                        builder.Clear();
+                    }
+
+                    var match = System.Text.RegularExpressions.Regex.Match(line, @" b/(.+)$");
+                    currentFile = match.Success ? match.Groups[1].Value.Trim() : "";
+                    continue;
+                }
+
                 if (line.StartsWith("Index:"))
                 {
                     if (builder.Length > 0)
@@ -126,6 +142,7 @@ namespace CodeReviewReporter.Services
                     }
 
                     currentFile = line.Replace("Index:", "").Trim();
+                    continue;
                 }
 
                 if (line.StartsWith("+") && !line.StartsWith("+++"))

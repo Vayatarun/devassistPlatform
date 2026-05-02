@@ -1,5 +1,4 @@
-﻿
-   using Analyzer.Core;
+using Analyzer.Core;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Core.Registry;
@@ -11,17 +10,24 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using System.Collections.Immutable;
+using System.Reflection;
 using AnalysisContext = Analyzer.Core.Models.AnalysisContext;
 
 public class RoslynAnalyzerService
 {
     // =========================
-    // ✅ AUTO LOAD ROSLYN ANALYZERS
+    // AUTO LOAD ROSLYN ANALYZERS
     // =========================
     public ImmutableArray<DiagnosticAnalyzer> GetAnalyzers()
     {
+        foreach (var reference in Assembly.GetExecutingAssembly().GetReferencedAssemblies())
+        {
+            try { Assembly.Load(reference); } catch { }
+        }
+
         var analyzers = AppDomain.CurrentDomain
             .GetAssemblies()
+            .Where(a => a.GetName().Name.StartsWith("Analyzer1"))
             .SelectMany(a =>
             {
                 try { return a.GetTypes(); }
@@ -29,16 +35,15 @@ public class RoslynAnalyzerService
             })
             .Where(t =>
                 typeof(DiagnosticAnalyzer).IsAssignableFrom(t) &&
-                !t.IsAbstract &&
-                t.GetConstructor(Type.EmptyTypes) != null)
+                !t.IsAbstract)
             .Select(t => (DiagnosticAnalyzer)Activator.CreateInstance(t))
-            .ToList();
+            .ToImmutableArray();
 
-        return analyzers.ToImmutableArray();
+        return analyzers;
     }
 
     // =========================
-    // ✅ AUTO LOAD CODE FIX PROVIDERS
+    // AUTO LOAD CODE FIX PROVIDERS
     // =========================
     public ImmutableArray<CodeFixProvider> GetCodeFixProviders()
     {
@@ -60,13 +65,12 @@ public class RoslynAnalyzerService
     }
 
     // =========================
-    // ✅ MAIN ANALYSIS METHOD
+    // MAIN ANALYSIS METHOD
     // =========================
     public async Task<List<CodeReviewIssue>> AnalyzeCode(string fileName, string code)
     {
         var issues = new List<CodeReviewIssue>();
 
-        // Parse Syntax Tree
         var tree = CSharpSyntaxTree.ParseText(code);
         var root = await tree.GetRootAsync();
 
@@ -78,50 +82,63 @@ public class RoslynAnalyzerService
         var codeLines = code.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
 
         // =========================
-        // 🔹 1. ROSLYN ANALYZERS
+        // 1. ROSLYN ANALYZERS
         // =========================
         var analyzers = GetAnalyzers();
-        var compilationWithAnalyzers = compilation.WithAnalyzers(analyzers);
-
-        var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
-
-        foreach (var diagnostic in diagnostics)
+        if (analyzers.Length > 0)
         {
-            // Skip low priority (optional)
-            if (diagnostic.Severity == DiagnosticSeverity.Info)
-                continue;
+            var compilationWithAnalyzers = compilation.WithAnalyzers(analyzers);
+            var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
 
-            var lineSpan = diagnostic.Location.GetLineSpan();
-            int line = lineSpan.StartLinePosition.Line + 1;
-
-            string codeLine = codeLines.ElementAtOrDefault(line - 1) ?? "";
-
-            issues.Add(new CodeReviewIssue
+            foreach (var diagnostic in diagnostics)
             {
-                FileName = fileName,
-                LineNumber = line,
-                RuleId = diagnostic.Id,
-                Severity = diagnostic.Severity.ToString(),
-                Message = diagnostic.GetMessage(),
-                Description = diagnostic.Descriptor.Description?.ToString(),
-                Code = codeLine,
-                Category = diagnostic.Descriptor.Category
-            });
+                if (diagnostic.Severity == DiagnosticSeverity.Info)
+                    continue;
+
+                var lineSpan = diagnostic.Location.GetLineSpan();
+                int line = lineSpan.StartLinePosition.Line + 1;
+
+                string codeLine = codeLines.ElementAtOrDefault(line - 1) ?? "";
+
+                issues.Add(new CodeReviewIssue
+                {
+                    FileName = fileName,
+                    LineNumber = line,
+                    RuleId = diagnostic.Id,
+                    Severity = diagnostic.Severity.ToString(),
+                    Message = diagnostic.GetMessage(),
+                    Description = diagnostic.Descriptor.Description?.ToString(),
+                    Code = codeLine,
+                    Category = diagnostic.Descriptor.Category
+                });
+            }
         }
 
         // =========================
-        // 🔹 2. CUSTOM RULE ENGINE (IRule)
+        // 2. CUSTOM RULE ENGINE (IRule)
         // =========================
+        var semanticModel = compilation.GetSemanticModel(tree);
+
+        // Bug 3 fix: initialize GlobalStore so Collector/Reporter rules don't NullRef
         var context = new AnalysisContext
         {
-            SyntaxRoot = root
-            // Optional: add SemanticModel later if needed
+            FilePath = fileName,
+            SourceCode = code,
+            SyntaxRoot = root,
+            SemanticModel = semanticModel,
+            GlobalStore = new GlobalAnalysisStore()
         };
 
         var rules = RuleLoader.LoadRules();
 
-        // OPTIONAL FILTERING (Enable/Disable categories)
-        var enabledCategories = new List<string> { "Security", "Performance", "Design" };
+        // Bug 8 fix: use the actual category names from Analyzer1.Rules
+        var enabledCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Security", "Design", "Efficiency",
+            "Maintainability", "Readability",
+            "Threading", "Stability", "Documentation",
+            "Exception Handling", "Code Smell"
+        };
 
         rules = rules
             .Where(r => enabledCategories.Contains(r.Metadata.Category))
@@ -138,13 +155,16 @@ public class RoslynAnalyzerService
                     issues.Add(new CodeReviewIssue
                     {
                         FileName = fileName,
-                        LineNumber = r.Line + 1,
+                        LineNumber = r.Line,
                         RuleId = r.RuleId,
                         Severity = r.Severity.ToString(),
                         Message = r.Message,
-                        Description = rule.Metadata.Title,
-                        Code = codeLines.ElementAtOrDefault(r.Line) ?? "",
-                        Category = rule.Metadata.Category
+                        Description = string.IsNullOrEmpty(r.WhyItMatters) ? rule.Metadata.Title : r.WhyItMatters,
+                        Code = codeLines.ElementAtOrDefault(r.Line - 1) ?? "",
+                        Category = rule.Metadata.Category,
+                        SuggestedFix = string.IsNullOrEmpty(r.SuggestedFix) ? rule.Metadata.Remediation : r.SuggestedFix,
+                        BadCodeExample = r.BadCodeExample,
+                        GoodCodeExample = r.GoodCodeExample
                     });
                 }
             }
@@ -155,14 +175,14 @@ public class RoslynAnalyzerService
                     FileName = fileName,
                     RuleId = "RULE_ENGINE_ERROR",
                     Severity = "Critical",
-                    Message = ex.Message,
+                    Message = $"[{rule.Metadata.RuleId}] {ex.Message}",
                     Category = "Engine"
                 });
             }
         }
 
         // =========================
-        // 🔹 3. REMOVE DUPLICATES
+        // 3. REMOVE DUPLICATES
         // =========================
         issues = issues
             .GroupBy(i => new { i.FileName, i.LineNumber, i.RuleId })

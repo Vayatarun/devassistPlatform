@@ -1,37 +1,258 @@
-﻿@page "/rules"
-@using Analyzer1.UI.Model
+@page "/rules"
+@inject IApiService Api
 
-<h3>Rules</h3>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Rules Catalog</h1>
+        <p class="page-subtitle">@_rules.Count rules — @_rules.Count(r => r.Enabled) enabled</p>
+    </div>
+</div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Severity</th>
-            <th>Enabled</th>
-        </tr>
-    </thead>
+@* ── Filter Bar ──────────────────────────────────────────────────────────── *@
+<div class="filter-bar">
+    <div class="filter-group">
+        <label>Category</label>
+        <select @bind="_category" @bind:after="LoadRules">
+            <option value="All">All Categories</option>
+            @foreach (var c in _categories)
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Severity</label>
+        <select @bind="_severity">
+            <option value="All">All Severities</option>
+            <option>Critical</option>
+            <option>Error</option>
+            <option>Warning</option>
+            <option>Info</option>
+        </select>
+    </div>
+    <div class="filter-search" style="flex:1">
+        <i class="bi bi-search"></i>
+        <input placeholder="Search rule ID or name..."
+               @bind="_search"
+               @oninput="OnSearchInput" />
+    </div>
+    <div class="filter-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" @bind="_showDisabledOnly" />
+            Disabled only
+        </label>
+    </div>
+</div>
 
-    <tbody>
-        @foreach (var r in Rule)
+@* ── Stats chips ────────────────────────────────────────────────────────── *@
+@if (!_loading && _rules.Count > 0)
+{
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        @foreach (var g in _rules.GroupBy(r => r.Category).OrderBy(g => g.Key))
         {
-            <tr>
-                <td>@r.Name</td>
-                <td>
-                    <select @bind="r.Severity">
-                        <option>Critical</option>
-                        <option>Major</option>
-                    </select>
-                </td>
-                <td><input type="checkbox" @bind="r.Enabled" /></td>
-            </tr>
+            <div class="category-chip @(_category == g.Key ? "active" : "")"
+                 @onclick="@(() => SelectCategory(g.Key))">
+                @g.Key
+                <span style="font-size:11px;background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:10px">@g.Count()</span>
+            </div>
         }
-    </tbody>
-</table>
+    </div>
+}
+
+@* ── Rules Table ─────────────────────────────────────────────────────────── *@
+@if (_loading)
+{
+    <div class="loading-container"><div class="spinner"></div><span>Loading rules catalog...</span></div>
+}
+else if (FilteredRules.Count == 0)
+{
+    <div class="empty-state">
+        <i class="bi bi-list-check"></i>
+        <div class="empty-state-title">No Rules Found</div>
+        <div class="empty-state-desc">
+            @if (_rules.Count == 0)
+            { @("Rules are loaded automatically when the API starts. Run a scan to trigger rule discovery.") }
+            else
+            { @("No rules match the current filters.") }
+        </div>
+    </div>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:90px">Rule ID</th>
+                <th>Name</th>
+                <th style="width:130px">Category</th>
+                <th style="width:100px">Severity</th>
+                <th>Tags</th>
+                <th style="width:80px;text-align:center">Enabled</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var rule in FilteredRules)
+            {
+                bool expanded = _expandedRuleIds.Contains(rule.RuleId);
+                <tr @onclick="@(() => ToggleExpand(rule.RuleId))" class="@(expanded ? "expanded" : "")">
+                    <td style="font-family:monospace;font-size:12px;font-weight:600;color:var(--accent)">
+                        @rule.RuleId
+                    </td>
+                    <td>
+                        <div style="font-weight:500">@rule.Name</div>
+                    </td>
+                    <td>
+                        <span class="badge @CategoryClass(rule.Category)">@rule.Category</span>
+                    </td>
+                    <td>
+                        <span class="badge @SeverityClass(rule.Severity)">@rule.Severity</span>
+                    </td>
+                    <td style="font-size:11px;color:var(--text-muted)">
+                        @rule.Tags
+                    </td>
+                    <td style="text-align:center" @onclick:stopPropagation>
+                        <label class="toggle">
+                            <input type="checkbox" checked="@rule.Enabled"
+                                   @onchange="@(e => ToggleRule(rule, (bool)(e.Value ?? true)))" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </td>
+                </tr>
+
+                @if (expanded)
+                {
+                    <tr class="issue-detail-row">
+                        <td colspan="6">
+                            <div style="padding:16px 20px">
+                                @if (!string.IsNullOrEmpty(rule.Description))
+                                {
+                                    <div class="detail-section-title">Description</div>
+                                    <p style="font-size:13px;margin:0 0 10px;color:var(--text-secondary)">@rule.Description</p>
+                                }
+                                @if (!string.IsNullOrEmpty(rule.Remediation))
+                                {
+                                    <div class="detail-section-title">Remediation</div>
+                                    <p style="font-size:13px;margin:0;color:var(--text-secondary)">@rule.Remediation</p>
+                                }
+
+                                <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+                                    <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">Override Severity:</span>
+                                    <select style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px"
+                                            @bind="rule.Severity"
+                                            @bind:after="@(() => SaveSeverity(rule))">
+                                        <option>Critical</option>
+                                        <option>Error</option>
+                                        <option>Warning</option>
+                                        <option>Info</option>
+                                    </select>
+                                    @if (_savedRuleIds.Contains(rule.RuleId))
+                                    {
+                                        <span style="font-size:11px;color:var(--gate-passed)">
+                                            <i class="bi bi-check-lg"></i> Saved
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <div style="padding:12px 16px;font-size:12px;color:var(--text-muted);text-align:right">
+        Showing @FilteredRules.Count of @_rules.Count rules
+    </div>
+}
 
 @code {
-    List<RuleModel> Rule = new()
+    List<RuleDto> _rules = new();
+    HashSet<string> _expandedRuleIds = new();
+    HashSet<string> _savedRuleIds = new();
+    bool _loading = true;
+    string _category = "All";
+    string _severity = "All";
+    string _search = "";
+    bool _showDisabledOnly;
+    System.Timers.Timer? _debounce;
+
+    static readonly string[] _categories = {
+        "Security", "Stability", "Threading", "Design",
+        "Maintainability", "Readability", "Efficiency", "Documentation"
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadRules();
+
+    async Task LoadRules()
     {
-        new RuleModel { Name="NullCheck", Severity="Critical", Enabled=true }
+        _loading = true;
+        StateHasChanged();
+        _rules = await Api.GetRulesAsync(_category == "All" ? null : _category, null);
+        _loading = false;
+    }
+
+    List<RuleDto> FilteredRules => _rules
+        .Where(r => (_severity == "All" || r.Severity == _severity))
+        .Where(r => (!_showDisabledOnly || !r.Enabled))
+        .Where(r => string.IsNullOrEmpty(_search) ||
+                    r.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    r.RuleId.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    (r.Tags?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
+        .ToList();
+
+    void OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? "";
+        _debounce?.Dispose();
+        _debounce = new System.Timers.Timer(300);
+        _debounce.Elapsed += (_, _) => { _debounce?.Dispose(); InvokeAsync(StateHasChanged); };
+        _debounce.AutoReset = false;
+        _debounce.Start();
+    }
+
+    void SelectCategory(string cat)
+    {
+        _category = _category == cat ? "All" : cat;
+        _ = LoadRules();
+    }
+
+    void ToggleExpand(string ruleId)
+    {
+        if (!_expandedRuleIds.Remove(ruleId)) _expandedRuleIds.Add(ruleId);
+    }
+
+    async Task ToggleRule(RuleDto rule, bool enabled)
+    {
+        rule.Enabled = enabled;
+        await Api.UpdateRuleAsync(rule.RuleId, enabled, null);
+        StateHasChanged();
+    }
+
+    async Task SaveSeverity(RuleDto rule)
+    {
+        await Api.UpdateRuleAsync(rule.RuleId, null, rule.Severity);
+        _savedRuleIds.Add(rule.RuleId);
+        StateHasChanged();
+        await Task.Delay(2000);
+        _savedRuleIds.Remove(rule.RuleId);
+        StateHasChanged();
+    }
+
+    static string SeverityClass(string s) => s?.ToLower() switch {
+        "critical" => "badge-critical",
+        "error"    => "badge-error",
+        "warning"  => "badge-warning",
+        _          => "badge-info"
+    };
+
+    static string CategoryClass(string c) => c?.ToLower() switch {
+        "security"        => "badge-security",
+        "stability"       => "badge-stability",
+        "design"          => "badge-design",
+        "maintainability" => "badge-maintainability",
+        "readability"     => "badge-readability",
+        "efficiency"      => "badge-efficiency",
+        "threading"       => "badge-threading",
+        _                 => "badge"
     };
 }

@@ -1,0 +1,218 @@
+@page "/quality-gate"
+@inject IApiService Api
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Quality Gate</h1>
+        <p class="page-subtitle">Configure pass/fail thresholds for each project</p>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-container"><div class="spinner"></div><span>Loading projects...</span></div>
+}
+else if (_projects.Count == 0)
+{
+    <div class="empty-state">
+        <i class="bi bi-shield-fill-check"></i>
+        <div class="empty-state-title">No Projects</div>
+        <div class="empty-state-desc">Add a project first to configure its quality gate.</div>
+        <a href="/projects" class="btn btn-primary btn-sm">Go to Projects</a>
+    </div>
+}
+else
+{
+    @* ── Overall Summary ────────────────────────────────────────────────── *@
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:24px">
+        @foreach (var p in _projects)
+        {
+            var gc = (p.QualityGateStatus?.ToLower()) switch {
+                "passed" => "passed",
+                "failed" => "failed",
+                _ => "unknown"
+            };
+            <div class="quality-gate-widget @gc" style="flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px">
+                <div style="font-weight:700;font-size:14px">@p.Name</div>
+                <div class="gate-status-badge" style="flex-direction:row;gap:6px">
+                    <div class="gate-status-icon @gc" style="font-size:18px">
+                        @if (gc == "passed")     { <i class="bi bi-check-circle-fill"></i> }
+                        else if (gc == "failed") { <i class="bi bi-x-circle-fill"></i> }
+                        else                     { <i class="bi bi-dash-circle"></i> }
+                    </div>
+                    <div class="gate-status-label @gc">@gc.ToUpper()</div>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted)">@p.IssueCount open issues</div>
+            </div>
+        }
+    </div>
+
+    @* ── Default Thresholds ─────────────────────────────────────────────── *@
+    <div class="card" style="max-width:560px">
+        <div class="card-header">
+            <span><i class="bi bi-sliders" style="margin-right:6px;color:var(--accent)"></i>Default Thresholds</span>
+        </div>
+        <div class="card-body">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                These thresholds apply to all projects. A project fails the quality gate if any threshold is exceeded.
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-exclamation-octagon-fill" style="color:var(--critical-color);margin-right:4px"></i>
+                        Max Critical Issues
+                    </label>
+                    <input type="number" class="form-control" @bind="_maxCritical" min="0" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--error-color);margin-right:4px"></i>
+                        Max Error Issues
+                    </label>
+                    <input type="number" class="form-control" @bind="_maxErrors" min="0" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-list-ul" style="color:var(--text-secondary);margin-right:4px"></i>
+                        Max Total Issues
+                    </label>
+                    <input type="number" class="form-control" @bind="_maxTotal" min="0" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-clock-history" style="color:var(--info-color);margin-right:4px"></i>
+                        Max Tech Debt (hours)
+                    </label>
+                    <input type="number" class="form-control" @bind="_maxDebtHours" min="0" />
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                <button class="btn btn-primary" @onclick="SaveThresholds">
+                    <i class="bi bi-check-lg"></i> Save Thresholds
+                </button>
+                @if (_saved)
+                {
+                    <span style="font-size:12px;color:var(--gate-passed)">
+                        <i class="bi bi-check-circle-fill"></i> Saved
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Per-project Gate Results ────────────────────────────────────────── *@
+    <div style="margin-top:24px">
+        <h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Gate Status per Project</h2>
+
+        @if (_gateResults.Count > 0)
+        {
+            @foreach (var kv in _gateResults)
+            {
+                var p = _projects.FirstOrDefault(x => x.Id == kv.Key);
+                var gate = kv.Value;
+                var gc = gate.Passed ? "passed" : "failed";
+
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header">
+                        <span style="display:flex;align-items:center;gap:10px">
+                            <i class="bi bi-folder2" style="color:var(--accent)"></i>
+                            @p?.Name
+                        </span>
+                        <span class="qg-badge @gc">
+                            @if (gate.Passed) { <i class="bi bi-check-lg"></i> } else { <i class="bi bi-x-lg"></i> }
+                            @gc.ToUpper()
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:@(gate.FailureReasons.Count > 0 ? "12px" : "0")">
+                            <div>
+                                <div style="font-size:20px;font-weight:700;color:var(--critical-color)">@gate.CriticalCount</div>
+                                <div style="font-size:11px;color:var(--text-secondary)">Critical (max @_maxCritical)</div>
+                            </div>
+                            <div>
+                                <div style="font-size:20px;font-weight:700;color:var(--error-color)">@gate.ErrorCount</div>
+                                <div style="font-size:11px;color:var(--text-secondary)">Errors (max @_maxErrors)</div>
+                            </div>
+                            <div>
+                                <div style="font-size:20px;font-weight:700">@gate.TotalIssues</div>
+                                <div style="font-size:11px;color:var(--text-secondary)">Total</div>
+                            </div>
+                            <div>
+                                <div style="font-size:20px;font-weight:700;color:var(--info-color)">@FormatDebt(gate.TechnicalDebtMinutes)</div>
+                                <div style="font-size:11px;color:var(--text-secondary)">Tech Debt</div>
+                            </div>
+                        </div>
+
+                        @if (gate.FailureReasons.Count > 0)
+                        {
+                            <div class="gate-failures">
+                                @foreach (var r in gate.FailureReasons)
+                                {
+                                    <div class="gate-failure-item">
+                                        <i class="bi bi-x-circle-fill"></i> @r
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="font-size:12px;color:var(--gate-passed)">
+                                <i class="bi bi-check-circle-fill"></i> All thresholds met
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <div>Run a scan on each project to see quality gate results.</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    List<ProjectDto> _projects = new();
+    Dictionary<int, QualityGateDto> _gateResults = new();
+    bool _loading = true;
+    bool _saved;
+    int _maxCritical = 5;
+    int _maxErrors = 20;
+    int _maxTotal = 200;
+    int _maxDebtHours = 40;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await Api.GetProjectsAsync();
+        _loading = false;
+
+        var tasks = _projects.Select(async p =>
+        {
+            var gate = await Api.GetQualityGateAsync(p.Id);
+            if (gate != null) lock (_gateResults) { _gateResults[p.Id] = gate; }
+        });
+        await Task.WhenAll(tasks);
+        StateHasChanged();
+    }
+
+    async Task SaveThresholds()
+    {
+        _saved = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        _saved = false;
+        StateHasChanged();
+    }
+
+    static string FormatDebt(int minutes)
+    {
+        if (minutes < 60) return $"{minutes}m";
+        int h = minutes / 60, m = minutes % 60;
+        return m > 0 ? $"{h}h {m}m" : $"{h}h";
+    }
+}

@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Generated analysis output (runtime artifacts — not source)
+analysis_cache.json
+CodeReviewReport.html
+CodeReviewReport.json
+CodeReviewIssues.xlsx
+
 # User-specific files
 *.rsuser
 *.suo

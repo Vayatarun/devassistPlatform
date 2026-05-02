@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CodeAnalyzer Pro — User Manual</title>
+<style>
+/* ── Fonts ──────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+/* ── Variables ──────────────────────────────────────────────────────────── */
+:root {
+  --blue:    #1865f2;
+  --blue-lt: #e8f0fe;
+  --green:   #1b8a3e;
+  --green-lt:#e6f4ea;
+  --red:     #c5221f;
+  --red-lt:  #fce8e6;
+  --orange:  #b45309;
+  --orange-lt:#fff3cd;
+  --yellow-lt:#fffde7;
+  --gray-50: #f8f9fa;
+  --gray-100:#f1f3f4;
+  --gray-200:#e8eaed;
+  --gray-400:#9aa0a6;
+  --gray-600:#5f6368;
+  --gray-800:#202124;
+  --text:    #202124;
+  --text-2:  #5f6368;
+  --border:  #dadce0;
+  --code-bg: #1e2433;
+  --code-fg: #c9d1e0;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;color:var(--text);background:#fff;line-height:1.65}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Print ──────────────────────────────────────────────────────────────── */
+@media print{
+  .no-print{display:none!important}
+  body{font-size:12px}
+  .cover{page-break-after:always;height:auto;padding:60px 40px}
+  h1,h2,h3{page-break-after:avoid}
+  pre,table,blockquote{page-break-inside:avoid}
+  .toc{page-break-after:always}
+  @page{margin:20mm 15mm}
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.page-wrap{max-width:900px;margin:0 auto;padding:0 32px 80px}
+
+/* ── Print-to-PDF button ─────────────────────────────────────────────────── */
+.print-btn{
+  position:fixed;bottom:28px;right:28px;z-index:999;
+  background:var(--blue);color:#fff;
+  border:none;border-radius:50px;padding:12px 22px;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+  box-shadow:0 4px 14px rgba(24,101,242,.35);cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  transition:background .15s,transform .1s;
+}
+.print-btn:hover{background:#1558d6;transform:translateY(-1px)}
+.print-btn svg{flex-shrink:0}
+
+/* ── Cover Page ──────────────────────────────────────────────────────────── */
+.cover{
+  min-height:88vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:60px 40px;
+  background:linear-gradient(145deg,#0d1b4b 0%,#1a1f36 40%,#1e2d55 100%);
+  border-radius:0 0 32px 32px;margin-bottom:56px;color:#fff;
+}
+.cover-logo{
+  width:80px;height:80px;background:linear-gradient(135deg,#4c9aff,#1558d6);
+  border-radius:20px;display:flex;align-items:center;justify-content:center;
+  margin-bottom:28px;box-shadow:0 8px 32px rgba(76,154,255,.4);
+}
+.cover-logo svg{width:44px;height:44px;fill:#fff}
+.cover h1{font-size:2.8rem;font-weight:800;letter-spacing:-1px;margin-bottom:10px}
+.cover-sub{font-size:1.1rem;color:rgba(255,255,255,.7);margin-bottom:32px;max-width:440px}
+.cover-meta{
+  display:flex;gap:24px;justify-content:center;flex-wrap:wrap;
+  font-size:13px;color:rgba(255,255,255,.5);margin-top:auto;padding-top:40px;
+}
+.cover-badge{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 18px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:50px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85);
+}
+
+/* ── Table of Contents ───────────────────────────────────────────────────── */
+.toc{
+  background:var(--gray-50);border:1px solid var(--border);
+  border-radius:12px;padding:28px 32px;margin-bottom:48px;
+}
+.toc h2{font-size:1rem;font-weight:700;color:var(--text-2);text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:16px}
+.toc ol{padding-left:20px}
+.toc li{margin-bottom:6px;font-size:14px}
+.toc li a{color:var(--blue);font-weight:500}
+.toc li ol{margin-top:4px;padding-left:18px}
+.toc li ol li{margin-bottom:3px;font-size:13px}
+.toc li ol li a{color:var(--gray-600);font-weight:400}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+section{margin-bottom:56px}
+.section-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;background:var(--blue);color:#fff;
+  border-radius:8px;font-size:14px;font-weight:700;margin-right:10px;
+  flex-shrink:0;vertical-align:middle;
+}
+
+/* ── Headings ────────────────────────────────────────────────────────────── */
+h1{font-size:2rem;font-weight:800;color:var(--text);margin-bottom:6px}
+h2{
+  font-size:1.35rem;font-weight:700;color:var(--text);
+  margin-bottom:16px;margin-top:0;padding-bottom:10px;
+  border-bottom:2px solid var(--gray-200);
+  display:flex;align-items:center;
+}
+h3{font-size:1.05rem;font-weight:700;color:var(--text);margin:28px 0 10px}
+h4{font-size:.95rem;font-weight:600;color:var(--text-2);margin:20px 0 8px}
+p{margin-bottom:14px;color:var(--text)}
+p:last-child{margin-bottom:0}
+
+/* ── Lead paragraph ──────────────────────────────────────────────────────── */
+.lead{font-size:1.05rem;color:var(--text-2);line-height:1.75;margin-bottom:24px}
+
+/* ── Info boxes ──────────────────────────────────────────────────────────── */
+.box{
+  display:flex;gap:12px;padding:14px 18px;border-radius:8px;
+  margin-bottom:18px;font-size:14px;line-height:1.6;
+}
+.box-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.box-info   {background:var(--blue-lt);  border-left:4px solid var(--blue);  color:#1a3a6e}
+.box-success{background:var(--green-lt); border-left:4px solid var(--green); color:#1a3a20}
+.box-warning{background:var(--orange-lt);border-left:4px solid var(--orange);color:#7a3800}
+.box-danger {background:var(--red-lt);   border-left:4px solid var(--red);   color:#6e1a1a}
+
+/* ── Code blocks ─────────────────────────────────────────────────────────── */
+pre{
+  background:var(--code-bg);color:var(--code-fg);
+  padding:18px 20px;border-radius:10px;font-family:'JetBrains Mono',monospace;
+  font-size:13px;line-height:1.7;overflow-x:auto;margin:12px 0 18px;
+  border:1px solid #2d3555;
+}
+code{
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  background:var(--gray-100);color:#c7254e;padding:2px 6px;border-radius:4px;
+}
+pre code{background:transparent;color:inherit;padding:0;font-size:inherit}
+.code-label{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--gray-400);margin-bottom:4px;margin-top:16px;
+}
+.code-label-bad {color:#e06c75}
+.code-label-good{color:#98c379}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:14px}
+thead th{
+  background:var(--gray-100);padding:10px 14px;text-align:left;
+  font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--text-2);border-bottom:2px solid var(--border);
+}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--gray-50)}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;
+}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.b-critical{background:#fff0f0;color:#da291c;border:1px solid #f5c6c6}.b-critical::before{background:#da291c}
+.b-error   {background:#fff5e8;color:#b95000;border:1px solid #f7d9b5}.b-error::before{background:#b95000}
+.b-warning {background:#fffbe5;color:#9e6600;border:1px solid #f5e39a}.b-warning::before{background:#9e6600}
+.b-info    {background:#e8f4fd;color:#0774b5;border:1px solid #b3d9f5}.b-info::before{background:#0774b5}
+.b-passed  {background:#e9f7ee;color:#24a148;border:1px solid #b8e8c8}
+.b-failed  {background:#fff0f0;color:#da291c;border:1px solid #f5c6c6}
+
+/* ── Step cards ──────────────────────────────────────────────────────────── */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{
+  display:flex;gap:16px;padding:16px 0;
+  border-bottom:1px solid var(--border);
+}
+.step:last-child{border-bottom:none}
+.step-num{
+  width:30px;height:30px;background:var(--blue);color:#fff;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;flex-shrink:0;margin-top:2px;
+}
+.step-body h4{margin:0 0 4px;font-size:.95rem}
+.step-body p{margin:0;font-size:14px;color:var(--text-2)}
+
+/* ── Workflow cards ──────────────────────────────────────────────────────── */
+.workflow-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.wf-card{
+  border:1px solid var(--border);border-radius:10px;padding:18px;
+  background:var(--gray-50);
+}
+.wf-card h4{font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:8px}
+.wf-card p{font-size:13px;color:var(--text-2);margin:0}
+
+/* ── Feature comparison table ────────────────────────────────────────────── */
+.compare td:nth-child(2),.compare td:nth-child(3){text-align:center}
+.compare thead th:nth-child(2),.compare thead th:nth-child(3){text-align:center}
+.tick{color:var(--green);font-weight:700;font-size:16px}
+.cross{color:var(--red);font-size:16px}
+
+/* ── Screenshot mockup ───────────────────────────────────────────────────── */
+.mockup{
+  border:2px solid var(--border);border-radius:10px;overflow:hidden;
+  margin:16px 0 24px;box-shadow:0 4px 20px rgba(0,0,0,.08);
+}
+.mockup-bar{
+  background:var(--gray-100);padding:10px 14px;display:flex;
+  align-items:center;gap:8px;border-bottom:1px solid var(--border);
+}
+.mockup-dot{width:12px;height:12px;border-radius:50%}
+.mockup-url{
+  flex:1;background:#fff;border:1px solid var(--border);
+  border-radius:4px;padding:4px 12px;font-size:12px;color:var(--text-2);
+  margin:0 8px;font-family:'JetBrains Mono',monospace;
+}
+.mockup-body{padding:20px;background:#f3f4f6}
+
+/* ── Metric row ──────────────────────────────────────────────────────────── */
+.metric-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;
+}
+.m-card{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:12px;text-align:center;
+}
+.m-val{font-size:22px;font-weight:800}
+.m-lbl{font-size:11px;color:var(--text-2);margin-top:2px}
+.m-bug {color:#da291c}.m-vuln{color:#b95000}.m-smell{color:#9e6600}.m-debt{color:#0774b5}
+
+/* ── Quick ref box ───────────────────────────────────────────────────────── */
+.qref{
+  background:var(--code-bg);color:var(--code-fg);border-radius:10px;
+  padding:24px 28px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  line-height:1.9;border:1px solid #2d3555;
+}
+.qref-head{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:#4c9aff;margin-top:16px;margin-bottom:4px;
+}
+.qref-head:first-child{margin-top:0}
+.qref-line{display:flex;gap:8px}
+.qref-key{color:#e5c07b;min-width:100px;flex-shrink:0}
+.qref-val{color:#98c379}
+.qref-desc{color:#6272a4;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+
+<!-- Print button -->
+<button class="print-btn no-print" onclick="window.print()">
+  <svg viewBox="0 0 20 20" width="18" fill="currentColor">
+    <path d="M5 4v3H4a2 2 0 00-2 2v5a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 0h6v3H7V4zm-1 9h8v4H6v-4zm9-4a1 1 0 110 2 1 1 0 010-2z"/>
+  </svg>
+  Save as PDF
+</button>
+
+<div class="page-wrap">
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- COVER PAGE -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.03 8.74-7 9.93C8.03 19.74 5 15.52 5 11V6.3l7-3.12zm-1 4.82v6h2V8h-2zm0 8v2h2v-2h-2z"/>
+    </svg>
+  </div>
+  <h1>CodeAnalyzer Pro</h1>
+  <p class="cover-sub">Complete User Manual — Static Code Analysis Platform for .NET C# Projects</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px">
+    <span class="cover-badge">Version 4.0</span>
+    <span class="cover-badge">Powered by Roslyn</span>
+    <span class="cover-badge">50+ Rules</span>
+  </div>
+  <div class="cover-meta">
+    <span>&#x1F4C5; May 2026</span>
+    <span>&#x1F4CB; 8 Sections</span>
+    <span>&#x1F527; .NET 8</span>
+    <span>&#x1F512; SonarQube-grade</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<nav class="toc" id="toc">
+  <h2>&#x1F4CB; Table of Contents</h2>
+  <ol>
+    <li><a href="#s1">What is CodeAnalyzer Pro?</a></li>
+    <li><a href="#s2">Prerequisites &amp; Setup</a></li>
+    <li><a href="#s3">CLI Tool — CodeReviewReporter</a>
+      <ol>
+        <li><a href="#s3-1">Scan a Folder</a></li>
+        <li><a href="#s3-2">Scan Git Diff</a></li>
+        <li><a href="#s3-3">Scan SVN Diff</a></li>
+        <li><a href="#s3-4">Scan a Diff File</a></li>
+        <li><a href="#s3-5">Clone &amp; Scan a Repo</a></li>
+        <li><a href="#s3-6">Output Flags</a></li>
+        <li><a href="#s3-7">Quality Gate for CI/CD</a></li>
+        <li><a href="#s3-8">Reading Reports</a></li>
+      </ol>
+    </li>
+    <li><a href="#s4">Web UI &amp; API</a>
+      <ol>
+        <li><a href="#s4-1">Starting the API</a></li>
+        <li><a href="#s4-2">Starting the UI</a></li>
+        <li><a href="#s4-3">Dashboard</a></li>
+        <li><a href="#s4-4">Projects Page</a></li>
+        <li><a href="#s4-5">Issues Page</a></li>
+        <li><a href="#s4-6">Rules Page</a></li>
+        <li><a href="#s4-7">Quality Gate Page</a></li>
+        <li><a href="#s4-8">Code Review Page</a></li>
+      </ol>
+    </li>
+    <li><a href="#s5">Understanding Issues</a></li>
+    <li><a href="#s6">Rule Categories Reference</a></li>
+    <li><a href="#s7">Common Workflows</a></li>
+    <li><a href="#s8">Quick Reference Card</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS IT -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s1">
+  <h2><span class="section-num">1</span>What is CodeAnalyzer Pro?</h2>
+
+  <p class="lead">
+    CodeAnalyzer Pro is a static code analysis platform built for .NET C# developers. It automatically scans your source code and reports bugs, security vulnerabilities, performance problems, and maintainability issues — comparable to SonarQube, but running entirely on your own machine.
+  </p>
+
+  <p>The tool works in three modes:</p>
+
+  <table>
+    <thead><tr><th>Mode</th><th>Description</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td><strong>CLI Tool</strong></td><td>Command-line scanner producing Excel, HTML, and JSON reports</td><td>Daily developer use, CI/CD pipelines, diff reviews</td></tr>
+      <tr><td><strong>Web UI + API</strong></td><td>Browser-based dashboard with project tracking and issue management</td><td>Team dashboards, sprint reviews, ongoing tracking</td></tr>
+      <tr><td><strong>VS Extension</strong></td><td>Roslyn VSIX analyzer showing issues inline in Visual Studio</td><td>Real-time feedback while coding</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-info">
+    <span class="box-icon">&#x2139;&#xFE0F;</span>
+    <div>The CLI Tool (<code>CodeReviewReporter</code>) is the most feature-rich entry point and is recommended for daily use. The Web UI builds on top of it for team visibility and tracking.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: PREREQUISITES -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s2">
+  <h2><span class="section-num">2</span>Prerequisites &amp; Setup</h2>
+
+  <h3>Requirements</h3>
+  <table>
+    <thead><tr><th>Requirement</th><th>Minimum Version</th><th>Download</th></tr></thead>
+    <tbody>
+      <tr><td>.NET SDK</td><td>8.0</td><td>dotnet.microsoft.com/download</td></tr>
+      <tr><td>Git (optional)</td><td>Any</td><td>git-scm.com</td></tr>
+      <tr><td>SVN (optional)</td><td>Any</td><td>For SVN mode only</td></tr>
+      <tr><td>Modern browser</td><td>Chrome / Edge / Firefox</td><td>For Web UI</td></tr>
+    </tbody>
+  </table>
+
+  <h3>One-Time Setup</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Open a terminal and navigate to the project folder</h4>
+        <p>Use Windows Terminal, PowerShell, or Command Prompt.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Restore NuGet packages</h4>
+        <p>Run this once — it downloads all required libraries.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Build the solution</h4>
+        <p>Verify everything compiles before first use.</p>
+      </div>
+    </div>
+  </div>
+
+  <pre><code># Navigate to solution folder
+cd E:\BackUp\TarunPractice\Analyzer1
+
+# Restore packages (once)
+dotnet restore
+
+# Build to verify setup
+dotnet build Analyzer1.API/Analyzer1.API.csproj
+dotnet build Analyzer1.UI/Analyzer1.UI.csproj
+dotnet build CodeReviewReporter/CodeReviewReporter.csproj</code></pre>
+
+  <div class="box box-success">
+    <span class="box-icon">&#x2705;</span>
+    <div>If you see <strong>"Build succeeded"</strong> for all three — you are ready to use the tool.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: CLI TOOL -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s3">
+  <h2><span class="section-num">3</span>CLI Tool — CodeReviewReporter</h2>
+
+  <p class="lead">The CLI tool analyzes C# code and generates reports. Run all commands from the <code>E:\BackUp\TarunPractice\Analyzer1</code> folder.</p>
+
+  <!-- 3.1 -->
+  <h3 id="s3-1">3.1 — Scan a Folder</h3>
+  <p>Scans all <code>.cs</code> files in a folder recursively. This is the most common mode.</p>
+  <pre><code>dotnet run --project CodeReviewReporter -- --path "C:\Projects\MyApp"</code></pre>
+  <p>Example with a real path:</p>
+  <pre><code>dotnet run --project CodeReviewReporter -- --path "C:\Work\HRMS\src"</code></pre>
+  <div class="box box-info">
+    <span class="box-icon">&#x1F4C2;</span>
+    <div>The tool automatically skips <code>bin\</code> and <code>obj\</code> folders. Point it at your source root — it handles the rest.</div>
+  </div>
+
+  <!-- 3.2 -->
+  <h3 id="s3-2">3.2 — Scan Latest Git Diff</h3>
+  <p>Analyzes <strong>only the files changed in the last commit</strong>. Perfect for pre-push checks or post-commit reviews.</p>
+  <pre><code># Run from inside your git repository
+cd C:\Projects\MyApp
+dotnet run --project E:\BackUp\TarunPractice\Analyzer1\CodeReviewReporter -- --git</code></pre>
+  <div class="box box-warning">
+    <span class="box-icon">&#x26A0;&#xFE0F;</span>
+    <div>The <code>--git</code> flag requires that the current working directory is inside a git repository with at least one commit.</div>
+  </div>
+
+  <!-- 3.3 -->
+  <h3 id="s3-3">3.3 — Scan SVN Changes</h3>
+  <p>Analyzes files changed in the current SVN working copy (uses <code>svn diff</code>).</p>
+  <pre><code>dotnet run --project CodeReviewReporter -- --svn</code></pre>
+
+  <!-- 3.4 -->
+  <h3 id="s3-4">3.4 — Scan a Saved Diff File</h3>
+  <p>If you have a diff file exported from Git, SVN, TFS, or any VCS:</p>
+  <pre><code>dotnet run --project CodeReviewReporter -- --file "C:\Diffs\sprint42-changes.diff"</code></pre>
+  <p>To create a diff file manually:</p>
+  <pre><code># Git — save last commit as diff file
+git diff HEAD~1..HEAD > my-changes.diff
+
+# SVN — save working copy changes
+svn diff > my-changes.diff</code></pre>
+
+  <!-- 3.5 -->
+  <h3 id="s3-5">3.5 — Clone &amp; Scan a Remote Repository</h3>
+  <p>Clones a repo to a temporary folder, analyzes it, then cleans up automatically.</p>
+  <pre><code>dotnet run --project CodeReviewReporter -- --repo "https://github.com/user/myrepo.git"</code></pre>
+
+  <!-- 3.6 -->
+  <h3 id="s3-6">3.6 — Output Flags</h3>
+  <p>Add these flags to any mode to generate additional report formats:</p>
+  <table>
+    <thead><tr><th>Flag</th><th>Output File</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><em>(none)</em></td><td><code>CodeReviewIssues.xlsx</code></td><td>Excel report — always generated</td></tr>
+      <tr><td><code>--html</code></td><td><code>CodeReviewReport.html</code></td><td>Interactive HTML report — open in browser</td></tr>
+      <tr><td><code>--json</code></td><td><code>CodeReviewReport.json</code></td><td>Machine-readable JSON — for CI/CD or scripts</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code># Generate all three formats
+dotnet run --project CodeReviewReporter -- --path "C:\Projects\MyApp" --html --json</code></pre>
+
+  <!-- 3.7 -->
+  <h3 id="s3-7">3.7 — Quality Gate for CI/CD</h3>
+  <p>These flags make the tool return a non-zero exit code (failing the pipeline) when thresholds are exceeded.</p>
+  <table>
+    <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>--max-critical N</code></td><td>Fail if Critical issues &gt; N</td></tr>
+      <tr><td><code>--max-errors N</code></td><td>Fail if Error issues &gt; N</td></tr>
+      <tr><td><code>--fail-on-gate</code></td><td>Return exit code 1 when any threshold is exceeded</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code># Fail pipeline if ANY critical issue is found, or more than 10 errors
+dotnet run --project CodeReviewReporter -- --git --max-critical 0 --max-errors 10 --fail-on-gate</code></pre>
+
+  <h4>Azure DevOps Pipeline example:</h4>
+  <pre><code>- script: |
+    dotnet run --project CodeReviewReporter -- --git --max-critical 0 --fail-on-gate
+  displayName: 'Code Quality Gate'
+  workingDirectory: $(Build.SourcesDirectory)</code></pre>
+
+  <h4>GitHub Actions example:</h4>
+  <pre><code>- name: Code Quality Gate
+  run: dotnet run --project CodeReviewReporter -- --git --max-critical 0 --fail-on-gate
+  working-directory: ./analyzer</code></pre>
+
+  <!-- 3.8 -->
+  <h3 id="s3-8">3.8 — Reading Reports</h3>
+
+  <h4>Excel Report (<code>CodeReviewIssues.xlsx</code>)</h4>
+  <p>Open in Microsoft Excel or LibreOffice Calc. It contains two sheets:</p>
+  <table>
+    <thead><tr><th>Sheet</th><th>Content</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Summary</strong></td><td>Total counts by severity and category, total technical debt estimate</td></tr>
+      <tr><td><strong>Code Review</strong></td><td>Full issue list with file, line, rule ID, message, code snippet, suggested fix, bad/good code examples</td></tr>
+    </tbody>
+  </table>
+
+  <h4>HTML Report (<code>CodeReviewReport.html</code>)</h4>
+  <p>Open in any browser. No internet connection needed — it is self-contained.</p>
+
+  <div class="mockup">
+    <div class="mockup-bar">
+      <div class="mockup-dot" style="background:#ff5f57"></div>
+      <div class="mockup-dot" style="background:#ffbd2e"></div>
+      <div class="mockup-dot" style="background:#28c840"></div>
+      <div class="mockup-url">file:///C:/Projects/CodeReviewReport.html</div>
+    </div>
+    <div class="mockup-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-weight:800;font-size:18px;color:#1a1f36">&#x1F6E1; Code Analysis Report</div>
+          <div style="font-size:12px;color:#6e7494">Analyzed: C:\Projects\MyApp &nbsp;·&nbsp; May 2, 2026</div>
+        </div>
+        <span class="badge b-passed">&#x2713; QUALITY GATE PASSED</span>
+      </div>
+      <div class="metric-row">
+        <div class="m-card"><div class="m-val m-bug">3</div><div class="m-lbl">Critical</div></div>
+        <div class="m-card"><div class="m-val m-vuln">8</div><div class="m-lbl">Errors</div></div>
+        <div class="m-card"><div class="m-val m-smell">42</div><div class="m-lbl">Warnings</div></div>
+        <div class="m-card"><div class="m-val m-debt">2h 30m</div><div class="m-lbl">Tech Debt</div></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e8f0;border-radius:6px;padding:10px 14px;font-size:12px;color:#6e7494">
+        &#x1F50D; Search... &nbsp;&nbsp;
+        <select style="font-size:12px;border:1px solid #e5e8f0;padding:2px 6px;border-radius:4px">
+          <option>All Severities</option></select>
+        &nbsp;&nbsp; <span style="color:#1865f2;cursor:pointer">&#x1F4C5; Export CSV</span>
+      </div>
+    </div>
+  </div>
+
+  <p>The HTML report features:</p>
+  <ul style="padding-left:20px;margin-bottom:14px;font-size:14px">
+    <li style="margin-bottom:6px"><strong>Search bar</strong> — type to filter issues by any text</li>
+    <li style="margin-bottom:6px"><strong>Severity filter</strong> — show only Critical / Error / Warning / Info</li>
+    <li style="margin-bottom:6px"><strong>Expandable rows</strong> — click any issue to see bad code, good code, and the suggested fix</li>
+    <li style="margin-bottom:6px"><strong>CSV export</strong> — download the filtered table as a spreadsheet</li>
+    <li style="margin-bottom:6px"><strong>Portable</strong> — share the file with anyone, no tool installation needed</li>
+  </ul>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: WEB UI & API -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s4">
+  <h2><span class="section-num">4</span>Web UI &amp; API</h2>
+  <p class="lead">The Web UI gives your team a shared SonarQube-style dashboard to track projects, manage issues, and configure rules from a browser.</p>
+
+  <!-- 4.1 -->
+  <h3 id="s4-1">4.1 — Starting the API</h3>
+  <p>The API must be running before you open the UI. Open a terminal and run:</p>
+  <pre><code>dotnet run --project Analyzer1.API</code></pre>
+  <p>The API starts at <code>https://localhost:7036</code>. You can explore all available endpoints at:</p>
+  <pre><code>https://localhost:7036/swagger</code></pre>
+  <div class="box box-info">
+    <span class="box-icon">&#x1F4A1;</span>
+    <div>Keep this terminal open — the API must stay running while you use the UI. Data is stored in an in-memory database and resets each time the API restarts.</div>
+  </div>
+
+  <!-- 4.2 -->
+  <h3 id="s4-2">4.2 — Starting the UI</h3>
+  <p>Open a <strong>second terminal</strong> and run:</p>
+  <pre><code>dotnet run --project Analyzer1.UI</code></pre>
+  <p>Then open your browser and go to: <code>https://localhost:7252</code></p>
+  <div class="box box-warning">
+    <span class="box-icon">&#x26A0;&#xFE0F;</span>
+    <div>If your browser shows a certificate warning, click <strong>Advanced → Proceed</strong>. This is normal for localhost HTTPS during development. Accept the dev certificate with: <code>dotnet dev-certs https --trust</code></div>
+  </div>
+
+  <!-- 4.3 -->
+  <h3 id="s4-3">4.3 — Dashboard</h3>
+  <p>The Dashboard (<code>/dashboard</code>) is your command center. It shows:</p>
+  <table>
+    <thead><tr><th>Widget</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Quality Gate Banner</strong></td><td>Green PASSED or red FAILED based on whether all projects meet thresholds. Shows projects passed/failed counts.</td></tr>
+      <tr><td><strong>Bugs tile</strong></td><td>Count of Stability + Threading issues</td></tr>
+      <tr><td><strong>Vulnerabilities tile</strong></td><td>Count of Security issues</td></tr>
+      <tr><td><strong>Code Smells tile</strong></td><td>Count of Design + Maintainability + Readability + Efficiency issues</td></tr>
+      <tr><td><strong>Tech Debt tile</strong></td><td>Total estimated fix time (e.g., 4h 30m)</td></tr>
+      <tr><td><strong>Severity bar chart</strong></td><td>Visual breakdown of Critical / Error / Warning / Info</td></tr>
+      <tr><td><strong>Category chips</strong></td><td>Clickable — click a category to jump to filtered Issues page</td></tr>
+      <tr><td><strong>Projects panel</strong></td><td>List of all projects with quality gate badges</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 4.4 -->
+  <h3 id="s4-4">4.4 — Projects Page</h3>
+  <p>Access at <code>/projects</code>. This is where you add projects and trigger scans.</p>
+
+  <h4>Adding a Project</h4>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><h4>Click "Add Project" button</h4><p>Top-right corner of the Projects page.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body"><h4>Fill in the form</h4><p><strong>Project Name</strong>: display name (e.g., "HRMS Backend")<br><strong>Project Path</strong>: full local path to the folder containing <code>.cs</code> files (e.g., <code>C:\Work\HRMS\src</code>)<br><strong>Description</strong>: optional short note</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body"><h4>Click "Add Project"</h4><p>The project card appears in the grid immediately.</p></div>
+    </div>
+  </div>
+
+  <h4>Running a Scan</h4>
+  <p>Click the <strong>Scan</strong> button on any project card. A spinner appears while the analysis runs. When complete:</p>
+  <ul style="padding-left:20px;margin-bottom:14px;font-size:14px">
+    <li style="margin-bottom:6px">A banner shows: <em>"Scan complete — 127 issues found. Quality Gate: PASSED ✓"</em></li>
+    <li style="margin-bottom:6px">The project card updates with new metrics</li>
+    <li style="margin-bottom:6px">The quality gate badge (PASSED / FAILED / UNKNOWN) updates</li>
+  </ul>
+
+  <h4>Project Card</h4>
+  <table>
+    <thead><tr><th>Element</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Quality Gate badge</td><td>Green PASSED, red FAILED, or gray UNKNOWN</td></tr>
+      <tr><td>Critical / Errors / Warnings / Total</td><td>Issue count by severity from the last scan</td></tr>
+      <tr><td>Last scanned time</td><td>e.g., "Scanned 5 min ago"</td></tr>
+      <tr><td><strong>Issues</strong> button</td><td>Navigate to Issues page filtered to this project</td></tr>
+      <tr><td><strong>Scan</strong> button</td><td>Trigger a new analysis</td></tr>
+      <tr><td><strong>Delete</strong> (trash icon)</td><td>Remove project and all its issues and scan history</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 4.5 -->
+  <h3 id="s4-5">4.5 — Issues Page</h3>
+  <p>Access at <code>/issues</code>. Investigate, filter, and triage every issue found across your projects.</p>
+
+  <h4>Filter Bar</h4>
+  <table>
+    <thead><tr><th>Filter</th><th>Options</th></tr></thead>
+    <tbody>
+      <tr><td>Project</td><td>Select one project (required to see issues)</td></tr>
+      <tr><td>Severity</td><td>All / Critical / Error / Warning / Info</td></tr>
+      <tr><td>Category</td><td>All / Security / Stability / Threading / Design / Maintainability / Readability / Efficiency / Documentation</td></tr>
+      <tr><td>Status</td><td>All / Open / Resolved / Won't Fix / False Positive</td></tr>
+      <tr><td>Search</td><td>Type any text — matches rule ID, message, or file name. Results update as you type.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Expanding an Issue</h4>
+  <p>Click any row to expand it. The detail panel shows:</p>
+  <ul style="padding-left:20px;margin-bottom:14px;font-size:14px">
+    <li style="margin-bottom:6px"><strong>Issue message</strong> — the full description of the specific problem</li>
+    <li style="margin-bottom:6px"><strong>Why It Matters</strong> — the real-world risk or impact</li>
+    <li style="margin-bottom:6px"><strong>Remediation</strong> — general guidance for this type of problem</li>
+    <li style="margin-bottom:6px"><strong>Suggested Fix</strong> — specific action to take on this exact instance</li>
+    <li style="margin-bottom:6px"><strong>Bad Code</strong> (red) — an example of the problematic pattern</li>
+    <li style="margin-bottom:6px"><strong>Good Code</strong> (green) — the correct way to write it</li>
+    <li style="margin-bottom:6px"><strong>Status buttons</strong> — change the issue status</li>
+  </ul>
+
+  <h4>Issue Status Workflow</h4>
+  <table>
+    <thead><tr><th>Status</th><th>Meaning</th><th>When to Use</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Open</strong></td><td>Active issue needing attention</td><td>Default state after scan</td></tr>
+      <tr><td><strong>Resolved</strong></td><td>Fixed in source code</td><td>After you fix the issue</td></tr>
+      <tr><td><strong>Won't Fix</strong></td><td>Acknowledged but intentional</td><td>When the pattern is deliberate by design</td></tr>
+      <tr><td><strong>False Positive</strong></td><td>Rule misfired</td><td>When the rule is wrong about this specific case</td></tr>
+    </tbody>
+  </table>
+  <div class="box box-info">
+    <span class="box-icon">&#x1F4A1;</span>
+    <div>Only <strong>Open</strong> issues count toward the Quality Gate. Marking issues as Resolved, Won't Fix, or False Positive excludes them from future gate checks.</div>
+  </div>
+
+  <!-- 4.6 -->
+  <h3 id="s4-6">4.6 — Rules Page</h3>
+  <p>Access at <code>/rules</code>. View and configure all 50+ analysis rules.</p>
+
+  <h4>Category Chips</h4>
+  <p>Click a chip at the top to filter the rules table to one category. Click again to deselect.</p>
+
+  <h4>Expanding a Rule</h4>
+  <p>Click any row to see the full description, remediation guidance, and severity override control.</p>
+
+  <h4>Disabling a Rule</h4>
+  <p>Toggle the switch in the <strong>Enabled</strong> column. Disabled rules are ignored in future scans. Useful when a rule produces too many false positives for your specific codebase.</p>
+
+  <h4>Overriding Severity</h4>
+  <p>Expand a rule and use the <strong>Override Severity</strong> dropdown to change a rule's severity. For example, change <code>MAIN001 Deep Nesting</code> from Warning to Error if your team treats it as a serious issue.</p>
+
+  <!-- 4.7 -->
+  <h3 id="s4-7">4.7 — Quality Gate Page</h3>
+  <p>Access at <code>/quality-gate</code>. Configure pass/fail thresholds.</p>
+  <table>
+    <thead><tr><th>Threshold</th><th>Default</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Max Critical Issues</td><td>5</td><td>Fail if Critical issue count exceeds this</td></tr>
+      <tr><td>Max Error Issues</td><td>20</td><td>Fail if Error issue count exceeds this</td></tr>
+      <tr><td>Max Total Issues</td><td>200</td><td>Fail if total open issues exceed this</td></tr>
+      <tr><td>Max Tech Debt (hours)</td><td>40h</td><td>Fail if estimated fix time exceeds this</td></tr>
+    </tbody>
+  </table>
+  <p>The page also shows a per-project breakdown: exact counts, gate status, and any failure reasons.</p>
+
+  <!-- 4.8 -->
+  <h3 id="s4-8">4.8 — Code Review Page</h3>
+  <p>Access at <code>/review1</code>. Upload a diff file for a one-off review without running the full CLI.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><h4>Click the file chooser</h4><p>Select your <code>.diff</code> file from disk.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body"><h4>Wait for analysis</h4><p>"Analyzing diff file..." message appears. This takes a few seconds.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body"><h4>Report downloads automatically</h4><p><code>CodeReviewReport.xlsx</code> is saved to your Downloads folder.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: UNDERSTANDING ISSUES -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s5">
+  <h2><span class="section-num">5</span>Understanding Issues</h2>
+
+  <h3>Severity Levels</h3>
+  <table>
+    <thead><tr><th>Severity</th><th>Color</th><th>When Used</th><th>Fix Priority</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge b-critical">Critical</span></td><td>Red</td><td>Security vulnerabilities, crash-causing bugs, data loss risks</td><td>Immediately</td></tr>
+      <tr><td><span class="badge b-error">Error</span></td><td>Orange</td><td>Significant bugs, resource leaks, severe bad practices</td><td>Before release</td></tr>
+      <tr><td><span class="badge b-warning">Warning</span></td><td>Yellow</td><td>Code smells, performance issues, design problems</td><td>In next sprint</td></tr>
+      <tr><td><span class="badge b-info">Info</span></td><td>Blue</td><td>Minor style issues, missing documentation</td><td>As time allows</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Technical Debt</h3>
+  <p>Each issue has an estimated fix time calculated automatically:</p>
+  <table>
+    <thead><tr><th>Severity</th><th>Time per Issue</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge b-critical">Critical</span></td><td>60 minutes</td></tr>
+      <tr><td><span class="badge b-error">Error</span></td><td>30 minutes</td></tr>
+      <tr><td><span class="badge b-warning">Warning</span></td><td>10 minutes</td></tr>
+      <tr><td><span class="badge b-info">Info</span></td><td>5 minutes</td></tr>
+    </tbody>
+  </table>
+  <p>The total debt across all issues appears in the Dashboard and reports. Use this to estimate sprint capacity needed for cleanup.</p>
+
+  <h3>Example Issue — Expanded</h3>
+  <div class="mockup">
+    <div class="mockup-bar">
+      <div class="mockup-dot" style="background:#ff5f57"></div>
+      <div class="mockup-dot" style="background:#ffbd2e"></div>
+      <div class="mockup-dot" style="background:#28c840"></div>
+      <div class="mockup-url">https://localhost:7252/issues</div>
+    </div>
+    <div class="mockup-body">
+      <div style="background:#fff;border:1px solid #e5e8f0;border-radius:6px;overflow:hidden;font-size:13px">
+        <div style="padding:10px 14px;background:#fafbff;border-bottom:1px solid #e5e8f0;display:flex;gap:12px;align-items:center">
+          <span class="badge b-critical">Critical</span>
+          <span style="font-weight:700">SEC001</span>
+          <span style="color:#6e7494">SQL Injection</span>
+          <span style="margin-left:auto;color:#6e7494;font-size:11px">UserRepository.cs : 42</span>
+          <span style="color:#6e7494">&#x25B2;</span>
+        </div>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6e7494;margin-bottom:6px">Why It Matters</div>
+            <div style="font-size:12px;color:#5f6368">An attacker can manipulate the SQL query to access, modify, or delete any data in the database.</div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6e7494;margin:12px 0 6px">Suggested Fix</div>
+            <div style="font-size:12px;background:#f6fff8;padding:8px 10px;border-left:3px solid #24a148;border-radius:4px">Replace string concatenation with parameterized queries using SqlParameter.</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#e06c75;margin-bottom:4px">&#x2BC8; Bad Code</div>
+            <pre style="font-size:11px;padding:8px 10px;border-left:3px solid #da291c;border-radius:4px;margin:0 0 10px"><code>var sql = "SELECT * FROM Users WHERE id = " + userId;</code></pre>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#98c379;margin-bottom:4px">&#x2713; Good Code</div>
+            <pre style="font-size:11px;padding:8px 10px;border-left:3px solid #24a148;border-radius:4px;margin:0"><code>cmd.CommandText = "SELECT * FROM Users WHERE id = @id";
+cmd.Parameters.AddWithValue("@id", userId);</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: RULE CATEGORIES -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s6">
+  <h2><span class="section-num">6</span>Rule Categories Reference</h2>
+  <p>The analyzer includes 50+ rules organized into 8 categories:</p>
+
+  <h3>Security</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>SEC001</td><td>SQL Injection</td><td><span class="badge b-critical">Critical</span></td></tr>
+      <tr><td>SEC002</td><td>Hardcoded Credentials</td><td><span class="badge b-critical">Critical</span></td></tr>
+      <tr><td>SEC003</td><td>Command Injection</td><td><span class="badge b-critical">Critical</span></td></tr>
+      <tr><td>SEC004</td><td>Weak Cryptography</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>SEC005</td><td>Insecure Random</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>SEC006</td><td>Sensitive Data Logging</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>SEC007</td><td>Open Redirect</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>SEC008</td><td>XSS (Cross-Site Scripting)</td><td><span class="badge b-critical">Critical</span></td></tr>
+      <tr><td>SEC009</td><td>Path Traversal</td><td><span class="badge b-critical">Critical</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Stability</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>STB001</td><td>Empty Catch Block</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>STB002</td><td>Catch General Exception</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>STB003</td><td>Missing Dispose (Resource Leak)</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>STB004</td><td>Infinite Loop Risk</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>STB005</td><td>Possible Null Reference</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>STB006</td><td>Index Out of Range</td><td><span class="badge b-error">Error</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Threading</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>THR001</td><td>Async Void Method</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>THR002</td><td>Task.Result / Task.Wait (Blocking)</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>THR003</td><td>Thread.Sleep in Async Code</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>THR004</td><td>Lock on Public Object</td><td><span class="badge b-error">Error</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Design</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>DES001</td><td>Deep Nesting (&gt;4 levels)</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>DES002</td><td>Magic Numbers</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>DES003</td><td>Large Class / God Class</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>DES004</td><td>Long Method (&gt;50 lines)</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>DES005</td><td>Too Many Parameters (&gt;5)</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>DES006</td><td>Inappropriate Intimacy</td><td><span class="badge b-warning">Warning</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Maintainability</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>MAIN001</td><td>High Cognitive Complexity</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>MAIN002</td><td>Duplicate Code</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>MAIN003</td><td>Feature Envy</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>MAIN004</td><td>Shotgun Surgery</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>MAIN005</td><td>Data Clump</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>MAIN011</td><td>Private Method Never Called (Dead Code)</td><td><span class="badge b-warning">Warning</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Efficiency</h3>
+  <table>
+    <thead><tr><th>Rule ID</th><th>Rule Name</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr><td>EFF001</td><td>Blocking Async Call (.Result / .Wait)</td><td><span class="badge b-error">Error</span></td></tr>
+      <tr><td>EFF002</td><td>LINQ in Loop (N+1 query pattern)</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>EFF003</td><td>Multiple Enumeration</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>EFF004</td><td>String Concatenation in Loop</td><td><span class="badge b-warning">Warning</span></td></tr>
+      <tr><td>EFF005</td><td>Count() instead of Any()</td><td><span class="badge b-info">Info</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: COMMON WORKFLOWS -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s7">
+  <h2><span class="section-num">7</span>Common Workflows</h2>
+
+  <div class="workflow-grid">
+    <div class="wf-card">
+      <h4>&#x1F4C5; Daily Developer Check</h4>
+      <p>After committing, scan your recent changes and review the HTML report before pushing.</p>
+    </div>
+    <div class="wf-card">
+      <h4>&#x1F50D; Pre-Merge Code Review</h4>
+      <p>Generate a diff from a feature branch and share the HTML report with reviewers.</p>
+    </div>
+    <div class="wf-card">
+      <h4>&#x1F6E1; CI/CD Quality Gate</h4>
+      <p>Automatically block merges that introduce Critical issues or exceed error thresholds.</p>
+    </div>
+    <div class="wf-card">
+      <h4>&#x1F4CA; Team Dashboard</h4>
+      <p>Run the Web UI so the whole team can see project health and track issue resolution.</p>
+    </div>
+  </div>
+
+  <h3>Workflow 1 — Daily Developer Check</h3>
+  <pre><code># After committing your changes:
+cd C:\Projects\MyApp
+dotnet run --project E:\BackUp\TarunPractice\Analyzer1\CodeReviewReporter -- --git --html
+
+# Open the report:
+start CodeReviewReport.html</code></pre>
+
+  <h3>Workflow 2 — Pre-Merge Code Review</h3>
+  <pre><code># On your feature branch:
+git diff main...HEAD > pr-review.diff
+
+# Analyze the diff:
+dotnet run --project CodeReviewReporter -- --file pr-review.diff --html
+
+# Share CodeReviewReport.html with the reviewer via email or Teams</code></pre>
+
+  <h3>Workflow 3 — CI/CD Quality Gate</h3>
+  <pre><code># Azure DevOps
+- script: dotnet run --project CodeReviewReporter -- --git --max-critical 0 --max-errors 5 --fail-on-gate
+  displayName: 'Code Quality Gate'
+
+# GitHub Actions
+- name: Quality Gate
+  run: dotnet run --project CodeReviewReporter -- --git --max-critical 0 --fail-on-gate</code></pre>
+
+  <h3>Workflow 4 — Team Dashboard (Web UI)</h3>
+  <pre><code># Terminal 1 — Start API
+dotnet run --project Analyzer1.API
+
+# Terminal 2 — Start UI
+dotnet run --project Analyzer1.UI
+
+# Browser → https://localhost:7252
+# 1. Go to Projects → Add Project → enter your project name + path
+# 2. Click "Scan" on the project card
+# 3. Dashboard automatically shows results
+# 4. Share the URL with your team (all on the same network)</code></pre>
+
+  <h3>Workflow 5 — Weekly Audit Report</h3>
+  <pre><code># Generate all formats for the full codebase
+dotnet run --project CodeReviewReporter -- --path "C:\Projects\HRMS" --html --json
+
+# CodeReviewIssues.xlsx — paste into sprint review deck
+# CodeReviewReport.html — share with tech lead
+# CodeReviewReport.json — import into JIRA or Confluence via script</code></pre>
+
+  <div class="box box-success">
+    <span class="box-icon">&#x1F4A1;</span>
+    <div>
+      <strong>Pro Tips:</strong>
+      <ul style="padding-left:16px;margin-top:6px">
+        <li style="margin-bottom:4px">Start by fixing <strong>Critical</strong> and <strong>Error</strong> issues first — they carry the highest risk and the most tech debt.</li>
+        <li style="margin-bottom:4px">Use <strong>Won't Fix</strong> status in the UI for intentional patterns — they stop cluttering your dashboard.</li>
+        <li style="margin-bottom:4px">Use <strong>--git mode</strong> rather than scanning the whole folder in CI — it's faster and focuses on what changed.</li>
+        <li style="margin-bottom:4px">If a rule fires too much on your codebase, <strong>disable it</strong> on the Rules page rather than ignoring the results.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: QUICK REFERENCE CARD -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="s8">
+  <h2><span class="section-num">8</span>Quick Reference Card</h2>
+
+  <div class="qref">
+    <div class="qref-head">CLI — Scan Modes</div>
+    <div class="qref-line"><span class="qref-key">--path</span><span class="qref-val">"C:\Projects\MyApp"</span><span class="qref-desc">Scan all .cs files in folder</span></div>
+    <div class="qref-line"><span class="qref-key">--git</span><span class="qref-val"></span><span class="qref-desc">Scan files changed in last git commit</span></div>
+    <div class="qref-line"><span class="qref-key">--svn</span><span class="qref-val"></span><span class="qref-desc">Scan SVN working copy changes</span></div>
+    <div class="qref-line"><span class="qref-key">--file</span><span class="qref-val">"changes.diff"</span><span class="qref-desc">Scan a saved diff file</span></div>
+    <div class="qref-line"><span class="qref-key">--repo</span><span class="qref-val">"https://github.com/..."</span><span class="qref-desc">Clone and scan remote repo</span></div>
+
+    <div class="qref-head">CLI — Output Flags</div>
+    <div class="qref-line"><span class="qref-key">--html</span><span class="qref-val"></span><span class="qref-desc">Generate CodeReviewReport.html</span></div>
+    <div class="qref-line"><span class="qref-key">--json</span><span class="qref-val"></span><span class="qref-desc">Generate CodeReviewReport.json</span></div>
+
+    <div class="qref-head">CLI — Quality Gate</div>
+    <div class="qref-line"><span class="qref-key">--max-critical</span><span class="qref-val">N</span><span class="qref-desc">Fail if Critical issues &gt; N</span></div>
+    <div class="qref-line"><span class="qref-key">--max-errors</span><span class="qref-val">N</span><span class="qref-desc">Fail if Error issues &gt; N</span></div>
+    <div class="qref-line"><span class="qref-key">--fail-on-gate</span><span class="qref-val"></span><span class="qref-desc">Return exit code 1 on failure (for CI)</span></div>
+
+    <div class="qref-head">Web UI — URLs</div>
+    <div class="qref-line"><span class="qref-key">Start API</span><span class="qref-val">dotnet run --project Analyzer1.API</span></div>
+    <div class="qref-line"><span class="qref-key">Start UI</span><span class="qref-val">dotnet run --project Analyzer1.UI</span></div>
+    <div class="qref-line"><span class="qref-key">Dashboard</span><span class="qref-val">https://localhost:7252/dashboard</span></div>
+    <div class="qref-line"><span class="qref-key">Projects</span><span class="qref-val">https://localhost:7252/projects</span></div>
+    <div class="qref-line"><span class="qref-key">Issues</span><span class="qref-val">https://localhost:7252/issues</span></div>
+    <div class="qref-line"><span class="qref-key">Rules</span><span class="qref-val">https://localhost:7252/rules</span></div>
+    <div class="qref-line"><span class="qref-key">Quality Gate</span><span class="qref-val">https://localhost:7252/quality-gate</span></div>
+    <div class="qref-line"><span class="qref-key">API Swagger</span><span class="qref-val">https://localhost:7036/swagger</span></div>
+  </div>
+
+  <div style="margin-top:24px;padding:20px;background:var(--gray-50);border-radius:10px;border:1px solid var(--border);text-align:center;font-size:13px;color:var(--text-2)">
+    <strong>CodeAnalyzer Pro v4.0</strong> &nbsp;·&nbsp; Built on Roslyn &amp; .NET 8 &nbsp;·&nbsp; 50+ rules across 8 categories
+    <br><br>
+    <span style="font-size:12px">For questions or feedback, check the project README or raise an issue in the repository.</span>
+  </div>
+</section>
+
+</div><!-- end page-wrap -->
+</body>
+</html>

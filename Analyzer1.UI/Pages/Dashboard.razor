@@ -1,11 +1,275 @@
-﻿@page "/dashboard"
-@using Analyzer1.UI.Components.Dashboard
+@page "/"
+@page "/dashboard"
+@inject IApiService Api
+@inject NavigationManager Nav
 
-<h3>Dashboard</h3>
-
-<div class="grid">
-    <MetricCard Title="Bugs" Value="12" />
-    <MetricCard Title="Vulnerabilities" Value="5" />
-    <MetricCard Title="Code Smells" Value="120" />
-    <MetricCard Title="Coverage" Value="78%" />
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Code quality overview across all projects</p>
+    </div>
+    @if (_summary?.LastScanAt != null)
+    {
+        <span style="font-size:12px;color:var(--text-secondary)">
+            <i class="bi bi-clock"></i> Last scan: @TimeAgo(_summary.LastScanAt.Value)
+        </span>
+    }
 </div>
+
+@if (_loading)
+{
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <span>Loading dashboard data...</span>
+    </div>
+}
+else if (_error != null)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+            <strong>API unavailable</strong> — @_error
+            <div style="margin-top:4px;font-size:12px;">
+                Start the API: <code>dotnet run --project Analyzer1.API</code>
+            </div>
+        </div>
+    </div>
+
+    <div class="metric-grid">
+        <MetricCard Title="Bugs" Value="—" Icon="bi bi-bug" IconClass="bug" />
+        <MetricCard Title="Vulnerabilities" Value="—" Icon="bi bi-shield-exclamation" IconClass="vuln" />
+        <MetricCard Title="Code Smells" Value="—" Icon="bi bi-cloud" IconClass="smell" />
+        <MetricCard Title="Tech Debt" Value="—" Icon="bi bi-clock-history" IconClass="debt" />
+    </div>
+}
+else
+{
+    @* ── Quality Gate Banner ─────────────────────────────────────────── *@
+    @if (_summary != null && _summary.TotalProjects > 0)
+    {
+        var gateClass = _summary.ProjectsFailed > 0 ? "failed"
+                      : _summary.ProjectsPassed > 0 ? "passed" : "unknown";
+
+        <div class="quality-gate-widget @gateClass">
+            <div class="gate-status-badge">
+                <div class="gate-status-icon @gateClass">
+                    @if (gateClass == "passed")       { <i class="bi bi-check-circle-fill"></i> }
+                    else if (gateClass == "failed")   { <i class="bi bi-x-circle-fill"></i> }
+                    else                              { <i class="bi bi-dash-circle"></i> }
+                </div>
+                <div class="gate-status-label @gateClass">
+                    @(gateClass == "passed" ? "PASSED" : gateClass == "failed" ? "FAILED" : "UNKNOWN")
+                </div>
+            </div>
+            <div class="gate-divider"></div>
+            <div class="gate-details">
+                <div class="gate-title">Quality Gate</div>
+                <div class="gate-metrics">
+                    <div class="gate-metric">
+                        <div class="gate-metric-value" style="color:var(--gate-passed)">@_summary.ProjectsPassed</div>
+                        <div class="gate-metric-label">Passed</div>
+                    </div>
+                    <div class="gate-metric">
+                        <div class="gate-metric-value" style="color:var(--gate-failed)">@_summary.ProjectsFailed</div>
+                        <div class="gate-metric-label">Failed</div>
+                    </div>
+                    <div class="gate-metric">
+                        <div class="gate-metric-value">@_summary.TotalProjects</div>
+                        <div class="gate-metric-label">Projects</div>
+                    </div>
+                    <div class="gate-metric">
+                        <div class="gate-metric-value">@_summary.CriticalIssues</div>
+                        <div class="gate-metric-label">Critical</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ── Metric Tiles ────────────────────────────────────────────────── *@
+    <div class="metric-grid">
+        <MetricCard
+            Title="Bugs"
+            Value="@_bugs.ToString()"
+            Icon="bi bi-bug"
+            IconClass="bug"
+            Sub="Stability + Threading" />
+        <MetricCard
+            Title="Vulnerabilities"
+            Value="@_vulns.ToString()"
+            Icon="bi bi-shield-exclamation"
+            IconClass="vuln"
+            Sub="Security issues" />
+        <MetricCard
+            Title="Code Smells"
+            Value="@_smells.ToString()"
+            Icon="bi bi-cloud"
+            IconClass="smell"
+            Sub="Design, Maintainability" />
+        <MetricCard
+            Title="Tech Debt"
+            Value="@FormatDebt(_summary?.TechnicalDebtMinutes ?? 0)"
+            Icon="bi bi-clock-history"
+            IconClass="debt"
+            Sub="Remediation estimate" />
+    </div>
+
+    <div class="dashboard-grid">
+        @* ── Left column ─────────────────────────────────────────────── *@
+        <div>
+            @* Severity bar chart *@
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                    <span>
+                        <i class="bi bi-bar-chart-fill" style="margin-right:6px;color:var(--accent)"></i>
+                        Issues by Severity
+                    </span>
+                    <span style="font-size:13px;font-weight:400;color:var(--text-secondary)">
+                        @(_summary?.TotalIssues ?? 0) open
+                    </span>
+                </div>
+                <div class="card-body">
+                    @if ((_summary?.TotalIssues ?? 0) > 0)
+                    {
+                        int maxSev = Math.Max(1, _summary!.TotalIssues);
+                        <div class="bar-chart">
+                            <SeverityBar Label="Critical" Color="critical" Count="@_summary.CriticalIssues" Max="@maxSev" />
+                            <SeverityBar Label="Error"    Color="error"    Count="@_summary.ErrorIssues"    Max="@maxSev" />
+                            <SeverityBar Label="Warning"  Color="warning"  Count="@_summary.WarningIssues"  Max="@maxSev" />
+                            <SeverityBar Label="Info"     Color="info"     Count="@_summary.InfoIssues"     Max="@maxSev" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state" style="padding:16px">
+                            <i class="bi bi-check-circle" style="font-size:28px;color:var(--gate-passed)"></i>
+                            <div style="color:var(--text-secondary);margin-top:8px">No open issues</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Category breakdown *@
+            @if (_summary?.IssuesByCategory?.Count > 0)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <span>
+                            <i class="bi bi-pie-chart" style="margin-right:6px;color:var(--accent)"></i>
+                            Issues by Category
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="category-chips">
+                            @foreach (var cat in _summary.IssuesByCategory)
+                            {
+                                <div class="category-chip" @onclick="@(() => Nav.NavigateTo($"/issues?category={Uri.EscapeDataString(cat.Category)}"))">
+                                    @cat.Category
+                                    <span style="font-size:11px;background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:10px">@cat.Count</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── Right column ─────────────────────────────────────────────── *@
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <span>
+                        <i class="bi bi-folder2" style="margin-right:6px;color:var(--accent)"></i>
+                        Projects
+                    </span>
+                    <a href="/projects" class="btn btn-secondary btn-sm">View all</a>
+                </div>
+                <div style="padding:0">
+                    @if (_projects.Count > 0)
+                    {
+                        @foreach (var p in _projects.Take(6))
+                        {
+                            var gc = (p.QualityGateStatus?.ToLower()) switch {
+                                "passed" => "passed",
+                                "failed" => "failed",
+                                _ => "unknown"
+                            };
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border)">
+                                <div>
+                                    <div style="font-weight:600;font-size:13px">@p.Name</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">@p.IssueCount issues</div>
+                                </div>
+                                <span class="qg-badge @gc">
+                                    @if (gc == "passed")      { <i class="bi bi-check-lg"></i> }
+                                    else if (gc == "failed")  { <i class="bi bi-x-lg"></i> }
+                                    else                      { <i class="bi bi-dash"></i> }
+                                    @gc.ToUpper()
+                                </span>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-state" style="padding:24px">
+                            <i class="bi bi-folder-plus" style="font-size:28px;color:var(--text-muted)"></i>
+                            <div class="empty-state-desc">No projects yet. Add one to start analyzing.</div>
+                            <a href="/projects" class="btn btn-primary btn-sm">Add Project</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    DashboardSummaryDto? _summary;
+    List<ProjectDto> _projects = new();
+    bool _loading = true;
+    string? _error;
+    int _bugs, _vulns, _smells;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var t1 = Api.GetDashboardAsync();
+            var t2 = Api.GetProjectsAsync();
+            await Task.WhenAll(t1, t2);
+            _summary = t1.Result;
+            _projects = t2.Result;
+
+            if (_summary != null)
+            {
+                _bugs  = _summary.IssuesByCategory
+                    .Where(c => c.Category is "Stability" or "Threading")
+                    .Sum(c => c.Count);
+                _vulns = _summary.IssuesByCategory
+                    .Where(c => c.Category is "Security")
+                    .Sum(c => c.Count);
+                _smells = _summary.IssuesByCategory
+                    .Where(c => c.Category is "Design" or "Maintainability" or "Readability" or "Efficiency")
+                    .Sum(c => c.Count);
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    static string FormatDebt(int minutes)
+    {
+        if (minutes <= 0) return "0m";
+        if (minutes < 60) return $"{minutes}m";
+        int h = minutes / 60, m = minutes % 60;
+        return m > 0 ? $"{h}h {m}m" : $"{h}h";
+    }
+
+    static string TimeAgo(DateTime dt)
+    {
+        var d = DateTime.Now - dt;
+        if (d.TotalMinutes < 2)  return "just now";
+        if (d.TotalMinutes < 60) return $"{(int)d.TotalMinutes} min ago";
+        if (d.TotalHours < 24)   return $"{(int)d.TotalHours}h ago";
+        return dt.ToString("MMM d");
+    }
+}

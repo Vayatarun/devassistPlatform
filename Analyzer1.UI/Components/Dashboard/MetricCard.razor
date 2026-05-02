@@ -1,11 +1,22 @@
-﻿<div class="metric-card">
-    <h4>@Title</h4>
-    <div class="value">@Value</div>
-    <div class="trend">@Trend</div>
+<div class="metric-card">
+    <div class="metric-icon @IconClass">
+        <i class="@Icon"></i>
+    </div>
+    <div class="metric-body">
+        <div class="metric-value">@Value</div>
+        <div class="metric-label">@Title</div>
+        @if (!string.IsNullOrEmpty(Sub))
+        {
+            <div class="metric-trend flat">@Sub</div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter] public string Title { get; set; }
-    [Parameter] public string Value { get; set; }
-    [Parameter] public string Trend { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Icon { get; set; } = "bi bi-bar-chart";
+    [Parameter] public string IconClass { get; set; } = "total";
+    [Parameter] public string? Sub { get; set; }
+    [Parameter] public string? Trend { get; set; }
 }

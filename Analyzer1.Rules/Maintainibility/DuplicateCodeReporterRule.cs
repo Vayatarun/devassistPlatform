@@ -1,4 +1,4 @@
-﻿using Analyzer.Core.Enums;
+using Analyzer.Core.Enums;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Rules.Attributes;
@@ -17,7 +17,6 @@ namespace Analyzer.Rules.Maintainability
             Description = "Duplicated code blocks found across multiple files or methods.",
             Category = "Maintainability",
             DefaultSeverity = Severity.Info,
-           // Remediation = "Extract shared logic into common methods."
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
@@ -26,7 +25,8 @@ namespace Analyzer.Rules.Maintainability
 
             foreach (var kvp in context.GlobalStore.DuplicateMap)
             {
-                var occurrences = kvp.Value;
+                // Bug 13 fix: DuplicateMap values are now ConcurrentBag — materialize to List
+                var occurrences = kvp.Value.ToList();
 
                 if (occurrences.Count <= 1)
                     continue;
@@ -39,7 +39,7 @@ namespace Analyzer.Rules.Maintainability
                     {
                         RuleId = Metadata.RuleId,
                         Message = BuildMessage(occurrences),
-                        Line = occ.Line,
+                        Line = occ.Line,       // already 1-based (fixed in Collector)
                         FilePath = occ.FilePath,
                         Severity = severity
                     });

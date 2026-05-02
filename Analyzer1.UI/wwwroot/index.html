@@ -3,37 +3,39 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>Analyzer1.UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeAnalyzer Pro</title>
     <base href="/" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="css/app.css" rel="stylesheet" />
-    
-    <!-- If you add any scoped CSS files, uncomment the following to load them
-    <link href="Analyzer1.UI.styles.css" rel="stylesheet" /> -->
 </head>
 
 <body>
-    <div id="app">Loading...</div>
+    <div id="app">
+        <div class="app-loading">
+            <div class="app-loading-inner">
+                <div class="loading-spinner"></div>
+                <p>Loading CodeAnalyzer Pro...</p>
+            </div>
+        </div>
+    </div>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
+        <a class="dismiss">&#10007;</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        function downloadFile(filename, bytes) {
+            const blob = new Blob([new Uint8Array(bytes)], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+    </script>
 </body>
-<script>
-    function downloadFile(filename, bytes) {
-
-        const blob = new Blob([new Uint8Array(bytes)], {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        });
-
-        const link = document.createElement("a");
-
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-
-        link.click();
-    }
-</script>
 </html>

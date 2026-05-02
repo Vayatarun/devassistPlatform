@@ -11,4 +11,12 @@ public record RuleMetadata
     public Severity DefaultSeverity { get; init; }
     public RuleExecutionPhase Phase { get; set; } = RuleExecutionPhase.Analyzer;
 
+    public string Remediation { get; init; } = string.Empty;
+    public int EffortMinutes { get; init; } = 5;
+    public string[] Tags { get; init; } = Array.Empty<string>();
+    public string DocumentationUrl { get; init; } = string.Empty;
+
+    public string WhyItMatters { get; init; } = string.Empty;
+    public string BadCodeExample { get; init; } = string.Empty;
+    public string GoodCodeExample { get; init; } = string.Empty;
 }

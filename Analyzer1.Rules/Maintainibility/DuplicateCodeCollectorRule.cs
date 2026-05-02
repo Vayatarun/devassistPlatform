@@ -1,4 +1,4 @@
-﻿using Analyzer.Rules.Attributes;
+using Analyzer.Rules.Attributes;
 using global::Analyzer.Core.Enums;
 using global::Analyzer.Core.Interfaces;
 using global::Analyzer.Core.Models;
@@ -9,93 +9,85 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-
-   
-
-    namespace Analyzer.Rules.Maintainability
+namespace Analyzer.Rules.Maintainability
 {
     [RuleCategory("Maintainibility")]
-
     public class DuplicateCodeCollectorRule : IRule
+    {
+        private const int MinStatements = 5;
+
+        public RuleMetadata Metadata => new RuleMetadata
         {
-            private const int MinStatements = 5;
+            RuleId = "MAIN002_COLLECT",
+            Title = "Duplicate Code Collector",
+            Category = "Maintainability",
+            DefaultSeverity = Severity.Info
+        };
 
-            public RuleMetadata Metadata => new RuleMetadata
+        public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
+        {
+            var methods = context.SyntaxRoot.DescendantNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .Where(m => m.Body != null);
+
+            foreach (var method in methods)
             {
-                RuleId = "MAIN002_COLLECT",
-                Title = "Duplicate Code Collector",
-                Category = "Maintainability",
-                DefaultSeverity = Severity.Info
-            };
+                var statements = method.Body.Statements.ToList();
 
-            public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
-            {
-                var methods = context.SyntaxRoot.DescendantNodes()
-                    .OfType<MethodDeclarationSyntax>()
-                    .Where(m => m.Body != null);
-
-                foreach (var method in methods)
+                for (int i = 0; i <= statements.Count - MinStatements; i++)
                 {
-                    var statements = method.Body.Statements.ToList();
+                    var window = statements.Skip(i).Take(MinStatements).ToList();
 
-                    for (int i = 0; i <= statements.Count - MinStatements; i++)
+                    var normalized = Normalize(window);
+                    var hash = ComputeHash(normalized);
+
+                    // Bug 13 fix: DuplicateMap is now ConcurrentDictionary<string, ConcurrentBag<>>
+                    // GetOrAdd is atomic; ConcurrentBag.Add is thread-safe.
+                    var bag = context.GlobalStore.DuplicateMap.GetOrAdd(
+                        hash, _ => new System.Collections.Concurrent.ConcurrentBag<CodeBlockInfo>());
+
+                    bag.Add(new CodeBlockInfo
                     {
-                        var window = statements.Skip(i).Take(MinStatements).ToList();
-
-                        var normalized = Normalize(window);
-                        var hash = ComputeHash(normalized);
-
-                        if (!context.GlobalStore.DuplicateMap.ContainsKey(hash))
-                        {
-                            context.GlobalStore.DuplicateMap[hash] = new List<CodeBlockInfo>();
-                        }
-
-                        context.GlobalStore.DuplicateMap[hash].Add(new CodeBlockInfo
-                        {
-                            FilePath = context.FilePath,
-                            Line = window.First().GetLocation().GetLineSpan().StartLinePosition.Line,
-                            MethodName = method.Identifier.Text
-                        });
-                    }
-                }
-
-                return Enumerable.Empty<CodeIssue>(); // Collector does not report
-            }
-
-            private string Normalize(IEnumerable<StatementSyntax> statements)
-            {
-                var sb = new StringBuilder();
-
-                foreach (var stmt in statements)
-                {
-                    var normalized = stmt.ReplaceTokens(stmt.DescendantTokens(), (t, _) =>
-                    {
-                        if (t.IsKind(SyntaxKind.IdentifierToken))
-                            return SyntaxFactory.Identifier("VAR");
-
-                        if (t.IsKind(SyntaxKind.NumericLiteralToken))
-                            return SyntaxFactory.Literal("NUM", 0);
-
-                        if (t.IsKind(SyntaxKind.StringLiteralToken))
-                            return SyntaxFactory.Literal("STR", "");
-
-                        return t;
+                        FilePath = context.FilePath,
+                        // Bug 9 fix: store 1-based line numbers
+                        Line = window.First().GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                        MethodName = method.Identifier.Text
                     });
-
-                    sb.Append(normalized.ToString());
                 }
-
-                return sb.ToString();
             }
 
-            private string ComputeHash(string input)
+            return Enumerable.Empty<CodeIssue>();
+        }
+
+        private string Normalize(IEnumerable<StatementSyntax> statements)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var stmt in statements)
             {
-                using var sha = SHA256.Create();
-                var bytes = Encoding.UTF8.GetBytes(input);
-                var hash = sha.ComputeHash(bytes);
+                var normalized = stmt.ReplaceTokens(stmt.DescendantTokens(), (t, _) =>
+                {
+                    if (t.IsKind(SyntaxKind.IdentifierToken))
+                        return SyntaxFactory.Identifier("VAR");
+                    if (t.IsKind(SyntaxKind.NumericLiteralToken))
+                        return SyntaxFactory.Literal("NUM", 0);
+                    if (t.IsKind(SyntaxKind.StringLiteralToken))
+                        return SyntaxFactory.Literal("STR", "");
+                    return t;
+                });
 
-                return string.Concat(hash.Select(b => b.ToString("x2")));
+                sb.Append(normalized.ToString());
             }
+
+            return sb.ToString();
+        }
+
+        private string ComputeHash(string input)
+        {
+            using var sha = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(input);
+            var hash = sha.ComputeHash(bytes);
+            return string.Concat(hash.Select(b => b.ToString("x2")));
         }
     }
-
+}

@@ -22,7 +22,7 @@ namespace Analyzer.Core.Registry
                 .Where(t =>
                     typeof(IRule).IsAssignableFrom(t) &&
                     !t.IsAbstract &&
-                    t.GetConstructor(Type.EmptyTypes) != null)
+                    t.GetConstructor(Type.EmptyTypes) != null && t.FullName.StartsWith("Analyzer"))
                 .Select(t => (IRule)Activator.CreateInstance(t))
                 .ToList();
 

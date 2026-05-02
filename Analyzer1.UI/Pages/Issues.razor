@@ -1,43 +1,384 @@
-﻿@page "/issues"
-@using Analyzer1.UI.Components.CodeViewer
-@using Analyzer1.UI.Components.Issues
-@using Analyzer1.UI.Model
+@page "/issues"
+@inject IApiService Api
+@inject NavigationManager Nav
 
-<h3>Issues</h3>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Issues</h1>
+        <p class="page-subtitle">
+            @if (_page != null)
+            {
+                @($"{_page.Total} issues found")
+            }
+        </p>
+    </div>
+</div>
 
-<IssueFilter OnFilterChanged="ApplyFilters" />
+@* ── Filter Bar ──────────────────────────────────────────────────────────── *@
+<div class="filter-bar">
+    <div class="filter-group">
+        <label>Project</label>
+        <select @bind="_projectId" @bind:after="OnFilterChanged">
+            <option value="0">All Projects</option>
+            @foreach (var p in _projects)
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </select>
+    </div>
 
-<IssueTable Issues="FilteredIssues" OnSelect="SelectIssue" />
+    <div class="filter-group">
+        <label>Severity</label>
+        <select @bind="_severity" @bind:after="OnFilterChanged">
+            <option value="All">All Severities</option>
+            <option value="Critical">Critical</option>
+            <option value="Error">Error</option>
+            <option value="Warning">Warning</option>
+            <option value="Info">Info</option>
+        </select>
+    </div>
 
-@if (SelectedIssue != null)
+    <div class="filter-group">
+        <label>Category</label>
+        <select @bind="_category" @bind:after="OnFilterChanged">
+            <option value="All">All Categories</option>
+            @foreach (var c in _categories)
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>Status</label>
+        <select @bind="_status" @bind:after="OnFilterChanged">
+            <option value="All">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Resolved">Resolved</option>
+            <option value="WontFix">Won't Fix</option>
+            <option value="FalsePositive">False Positive</option>
+        </select>
+    </div>
+
+    <div class="filter-search" style="flex:1;min-width:180px">
+        <i class="bi bi-search"></i>
+        <input placeholder="Search rule, message, file..." @bind="_search" @oninput="OnSearchInput" />
+    </div>
+
+    @if (IsFiltered)
+    {
+        <button class="btn btn-secondary btn-sm" @onclick="ClearFilters">
+            <i class="bi bi-x-lg"></i> Clear
+        </button>
+    }
+</div>
+
+@* ── Issues Table ────────────────────────────────────────────────────────── *@
+@if (_loading)
 {
-    <CodeViewer Issue="SelectedIssue" />
+    <div class="loading-container"><div class="spinner"></div><span>Loading issues...</span></div>
+}
+else if (_page == null || _page.Issues.Count == 0)
+{
+    <div class="empty-state">
+        <i class="bi bi-check-circle" style="color:var(--gate-passed)"></i>
+        <div class="empty-state-title">No Issues Found</div>
+        <div class="empty-state-desc">
+            @if (IsFiltered) { @("No issues match the current filters.") }
+            else { @("Run a scan to detect issues in your codebase.") }
+        </div>
+        @if (IsFiltered)
+        {
+            <button class="btn btn-secondary btn-sm" @onclick="ClearFilters">Clear Filters</button>
+        }
+    </div>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:100px">Severity</th>
+                <th>Rule</th>
+                <th style="width:120px">Category</th>
+                <th>File</th>
+                <th style="width:50px">Line</th>
+                <th style="width:90px">Status</th>
+                <th style="width:60px">Effort</th>
+                <th style="width:32px"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var issue in _page.Issues)
+            {
+                bool expanded = _expandedIds.Contains(issue.Id);
+                <tr @onclick="@(() => ToggleExpand(issue.Id))" class="@(expanded ? "expanded" : "")">
+                    <td>
+                        <span class="badge @SeverityClass(issue.Severity)">@issue.Severity</span>
+                    </td>
+                    <td>
+                        <div style="font-weight:600;font-size:13px">@issue.Rule</div>
+                        @if (!string.IsNullOrEmpty(issue.RuleTitle) && issue.RuleTitle != issue.Rule)
+                        {
+                            <div style="font-size:11px;color:var(--text-secondary)">@issue.RuleTitle</div>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge @CategoryClass(issue.Category)">@issue.Category</span>
+                    </td>
+                    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">
+                        <i class="bi bi-file-code" style="color:var(--text-muted);margin-right:4px"></i>
+                        @System.IO.Path.GetFileName(issue.FilePath)
+                    </td>
+                    <td style="text-align:center;color:var(--text-secondary)">@issue.Line</td>
+                    <td>
+                        <span class="badge @StatusClass(issue.Status)">@issue.Status</span>
+                    </td>
+                    <td style="text-align:center;color:var(--text-muted);font-size:12px">
+                        @FormatEffort(issue.EffortMinutes)
+                    </td>
+                    <td>
+                        <i class="bi @(expanded ? "bi-chevron-up" : "bi-chevron-down")"
+                           style="color:var(--text-muted);font-size:12px"></i>
+                    </td>
+                </tr>
+
+                @if (expanded)
+                {
+                    <tr class="issue-detail-row">
+                        <td colspan="8">
+                            <div class="issue-detail-panel">
+                                @* Message + remediation *@
+                                <div>
+                                    <div class="detail-section-title">Issue</div>
+                                    <p style="font-size:13px;margin:0 0 8px">@issue.Message</p>
+
+                                    @if (!string.IsNullOrEmpty(issue.WhyItMatters))
+                                    {
+                                        <div class="detail-section-title" style="margin-top:12px">Why It Matters</div>
+                                        <p style="font-size:13px;margin:0 0 8px;color:var(--text-secondary)">@issue.WhyItMatters</p>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(issue.Remediation))
+                                    {
+                                        <div class="detail-section-title" style="margin-top:12px">Remediation</div>
+                                        <p style="font-size:13px;margin:0 0 8px;color:var(--text-secondary)">@issue.Remediation</p>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(issue.SuggestedFix))
+                                    {
+                                        <div class="detail-section-title" style="margin-top:12px">Suggested Fix</div>
+                                        <div class="fix-text">@issue.SuggestedFix</div>
+                                    }
+
+                                    <div class="issue-actions" style="margin-top:12px">
+                                        <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">Mark as:</span>
+                                        @if (issue.Status != "Resolved")
+                                        {
+                                            <button class="btn btn-success btn-sm" @onclick:stopPropagation @onclick="@(() => UpdateStatus(issue, "Resolved"))">
+                                                <i class="bi bi-check-lg"></i> Resolved
+                                            </button>
+                                        }
+                                        @if (issue.Status != "WontFix")
+                                        {
+                                            <button class="btn btn-secondary btn-sm" @onclick:stopPropagation @onclick="@(() => UpdateStatus(issue, "WontFix"))">
+                                                <i class="bi bi-dash"></i> Won't Fix
+                                            </button>
+                                        }
+                                        @if (issue.Status != "FalsePositive")
+                                        {
+                                            <button class="btn btn-secondary btn-sm" @onclick:stopPropagation @onclick="@(() => UpdateStatus(issue, "FalsePositive"))">
+                                                <i class="bi bi-flag"></i> False Positive
+                                            </button>
+                                        }
+                                        @if (issue.Status != "Open")
+                                        {
+                                            <button class="btn btn-secondary btn-sm" @onclick:stopPropagation @onclick="@(() => UpdateStatus(issue, "Open"))">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Reopen
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+
+                                @* Code examples *@
+                                <div>
+                                    @if (!string.IsNullOrEmpty(issue.BadCodeExample))
+                                    {
+                                        <div class="detail-section-title">Bad Code</div>
+                                        <pre class="code-block bad">@issue.BadCodeExample</pre>
+                                    }
+                                    @if (!string.IsNullOrEmpty(issue.GoodCodeExample))
+                                    {
+                                        <div class="detail-section-title" style="margin-top:10px">Good Code</div>
+                                        <pre class="code-block good">@issue.GoodCodeExample</pre>
+                                    }
+
+                                    <div style="margin-top:12px;font-size:11px;color:var(--text-muted)">
+                                        <i class="bi bi-file-code" style="margin-right:4px"></i>
+                                        @issue.FilePath : @issue.Line
+                                        &nbsp;·&nbsp;
+                                        Detected @issue.DetectedAt.ToString("MMM d, yyyy HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    @* ── Pagination ─────────────────────────────────────────────────────── *@
+    @if (_page.Total > _page.PageSize)
+    {
+        int totalPages = (int)Math.Ceiling((double)_page.Total / _page.PageSize);
+        <div class="pagination">
+            <button class="page-btn" disabled="@(_currentPage <= 1)" @onclick="PrevPage">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            @for (int pg = Math.Max(1, _currentPage - 2); pg <= Math.Min(totalPages, _currentPage + 2); pg++)
+            {
+                int pgCopy = pg;
+                <button class="page-btn @(pg == _currentPage ? "active" : "")" @onclick="@(() => GoToPage(pgCopy))">@pg</button>
+            }
+            <button class="page-btn" disabled="@(_currentPage >= totalPages)" @onclick="NextPage">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+            <span class="page-info">@_page.Total issues &nbsp;·&nbsp; Page @_currentPage of @totalPages</span>
+        </div>
+    }
 }
 
 @code {
-    List<IssueModel> AllIssues = new()
-    {
-        new IssueModel { Rule="NullCheck", Severity="Critical", File="User.cs", Line=10 },
-        new IssueModel { Rule="AsyncVoid", Severity="Major", File="Email.cs", Line=25 }
+    [SupplyParameterFromQuery] public int? projectId { get; set; }
+    [SupplyParameterFromQuery] public string? category { get; set; }
+
+    IssuePageDto? _page;
+    List<ProjectDto> _projects = new();
+    bool _loading = true;
+    HashSet<int> _expandedIds = new();
+
+    int _projectId = 0;
+    string _severity = "All";
+    string _category = "All";
+    string _status = "All";
+    string _search = "";
+    int _currentPage = 1;
+
+    System.Timers.Timer? _debounce;
+
+    static readonly string[] _categories = {
+        "Security", "Stability", "Threading", "Design",
+        "Maintainability", "Readability", "Efficiency", "Documentation"
     };
 
-    List<IssueModel> FilteredIssues;
-    IssueModel SelectedIssue;
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        FilteredIssues = AllIssues;
+        _projects = await Api.GetProjectsAsync();
+
+        if (projectId.HasValue && projectId.Value > 0) _projectId = projectId.Value;
+        if (!string.IsNullOrEmpty(category)) _category = category;
+
+        await LoadIssues();
     }
 
-    void ApplyFilters(FilterModel filter)
+    async Task LoadIssues()
     {
-        FilteredIssues = AllIssues
-            .Where(x => filter.Severity == "All" || x.Severity == filter.Severity)
-            .ToList();
+        _loading = true;
+        StateHasChanged();
+
+        var pid = _projectId > 0 ? _projectId : (_projects.FirstOrDefault()?.Id ?? 0);
+        if (pid > 0)
+        {
+            _page = await Api.GetIssuesAsync(pid, _severity, _category, _status, _search, _currentPage);
+        }
+        else
+        {
+            _page = null;
+        }
+
+        _loading = false;
+        StateHasChanged();
     }
 
-    void SelectIssue(IssueModel issue)
+    async Task OnFilterChanged()
     {
-        SelectedIssue = issue;
+        _currentPage = 1;
+        await LoadIssues();
+    }
+
+    void OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? "";
+        _debounce?.Dispose();
+        _debounce = new System.Timers.Timer(400);
+        _debounce.Elapsed += async (_, _) =>
+        {
+            _debounce?.Dispose();
+            _currentPage = 1;
+            await InvokeAsync(LoadIssues);
+        };
+        _debounce.AutoReset = false;
+        _debounce.Start();
+    }
+
+    void ClearFilters()
+    {
+        _severity = "All";
+        _category = "All";
+        _status = "All";
+        _search = "";
+        _currentPage = 1;
+        _ = LoadIssues();
+    }
+
+    bool IsFiltered => _severity != "All" || _category != "All" || _status != "All" || !string.IsNullOrEmpty(_search);
+
+    void ToggleExpand(int id)
+    {
+        if (!_expandedIds.Remove(id)) _expandedIds.Add(id);
+    }
+
+    async Task UpdateStatus(IssueDto issue, string newStatus)
+    {
+        await Api.UpdateIssueStatusAsync(issue.Id, newStatus);
+        issue.Status = newStatus;
+        StateHasChanged();
+    }
+
+    async Task PrevPage() { if (_currentPage > 1) { _currentPage--; await LoadIssues(); } }
+    async Task NextPage() { _currentPage++; await LoadIssues(); }
+    async Task GoToPage(int p) { _currentPage = p; await LoadIssues(); }
+
+    static string SeverityClass(string s) => s?.ToLower() switch {
+        "critical" => "badge-critical",
+        "error"    => "badge-error",
+        "warning"  => "badge-warning",
+        _          => "badge-info"
+    };
+
+    static string StatusClass(string s) => s switch {
+        "Resolved"      => "badge-resolved",
+        "WontFix"       => "badge-wontfix",
+        "FalsePositive" => "badge-false",
+        _               => "badge-open"
+    };
+
+    static string CategoryClass(string c) => c?.ToLower() switch {
+        "security"        => "badge-security",
+        "stability"       => "badge-stability",
+        "design"          => "badge-design",
+        "maintainability" => "badge-maintainability",
+        "readability"     => "badge-readability",
+        "efficiency"      => "badge-efficiency",
+        "threading"       => "badge-threading",
+        "documentation"   => "badge-documentation",
+        _                 => "badge"
+    };
+
+    static string FormatEffort(int minutes)
+    {
+        if (minutes < 60) return $"{minutes}m";
+        return $"{minutes / 60}h";
     }
 }

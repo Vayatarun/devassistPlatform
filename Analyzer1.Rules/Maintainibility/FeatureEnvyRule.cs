@@ -93,7 +93,8 @@ namespace Analyzer1.Rules.Maintainibility
                             {
                                 RuleId = Metadata.RuleId,
                                 Message = BuildMessage(method.Identifier.Text, externalType, ownAccess, externalAccess),
-                                Line = method.GetLocation().GetLineSpan().StartLinePosition.Line,
+                                // Bug 9 fix: was 0-based
+                                Line = method.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
                                 Severity = CalculateSeverity(externalAccess, ownAccess)
                             });
                         }

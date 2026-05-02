@@ -1,8 +1,40 @@
-﻿<div class="sidebar">
-    <h2>Analyzer</h2>
+<nav class="sidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-shield-check"></i>
+        <span>CodeAnalyzer Pro</span>
+    </div>
 
-    <NavLink href="/dashboard">Dashboard</NavLink>
-    <NavLink href="/projects">Projects</NavLink>
-    <NavLink href="/issues">Issues</NavLink>
-    <NavLink href="/rules">Rules</NavLink>
-</div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Overview</div>
+        <NavLink href="/dashboard" Match="NavLinkMatch.All">
+            <i class="bi bi-speedometer2"></i>Dashboard
+        </NavLink>
+        <NavLink href="/projects">
+            <i class="bi bi-folder2"></i>Projects
+        </NavLink>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Analysis</div>
+        <NavLink href="/issues">
+            <i class="bi bi-bug"></i>Issues
+        </NavLink>
+        <NavLink href="/rules">
+            <i class="bi bi-list-check"></i>Rules
+        </NavLink>
+        <NavLink href="/quality-gate">
+            <i class="bi bi-shield-fill-check"></i>Quality Gate
+        </NavLink>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Reports</div>
+        <NavLink href="/review1">
+            <i class="bi bi-file-diff"></i>Code Review
+        </NavLink>
+    </div>
+
+    <div class="sidebar-footer">
+        v3.0 &nbsp;·&nbsp; CodeAnalyzer Pro
+    </div>
+</nav>

@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace Analyzer.Core.Models
 {
     public class GlobalAnalysisStore
     {
-        // Hash → list of occurrences across files
-        public Dictionary<string, List<CodeBlockInfo>> DuplicateMap { get; }
-            = new Dictionary<string, List<CodeBlockInfo>>();
-      
-            public Dictionary<string, List<CallSiteInfo>> MethodUsageMap { get; } = new Dictionary<string, List<CallSiteInfo>>();
+        public ConcurrentDictionary<string, ConcurrentBag<CodeBlockInfo>> DuplicateMap { get; }
+            = new ConcurrentDictionary<string, ConcurrentBag<CodeBlockInfo>>();
 
+        public ConcurrentDictionary<string, ConcurrentBag<CallSiteInfo>> MethodUsageMap { get; }
+            = new ConcurrentDictionary<string, ConcurrentBag<CallSiteInfo>>();
     }
 }

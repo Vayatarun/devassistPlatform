@@ -1,4 +1,4 @@
-﻿using Analyzer.Core.Enums;
+using Analyzer.Core.Enums;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Rules.Attributes;
@@ -19,11 +19,29 @@ namespace Analyzer.Rules.Efficiency
             Description = "Using LINQ queries inside loops can lead to O(n²) performance issues. Consider precomputing or using a dictionary.",
             Category = "Efficiency",
             DefaultSeverity = Severity.Critical,
-           // Remediation = "Move LINQ query outside loop or use Dictionary/Lookup for O(1) access."
+            Remediation = "Build a Dictionary or HashSet outside the loop, then use O(1) lookup inside.",
+            WhyItMatters = "LINQ inside a loop scans the entire collection on every iteration. 1000 orders × 1000 customers = 1,000,000 comparisons instead of 1,000. This causes timeouts and OOM under production load.",
+            BadCodeExample =
+                "// BAD: O(n²) — scans all customers on EVERY order iteration\n" +
+                "foreach (var order in orders) {\n" +
+                "    var cust = customers.FirstOrDefault(c => c.Id == order.CustomerId);\n" +
+                "    // 1000 orders × 1000 customers = 1,000,000 iterations!\n" +
+                "}",
+            GoodCodeExample =
+                "// GOOD: O(n) — build lookup once, then O(1) per order\n" +
+                "var custMap = customers.ToDictionary(c => c.Id);\n" +
+                "foreach (var order in orders) {\n" +
+                "    custMap.TryGetValue(order.CustomerId, out var cust);\n" +
+                "    // 1000 orders × O(1) = 1000 operations total\n" +
+                "}"
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
         {
+            // Bug 4 fix: rule requires SemanticModel for LINQ method resolution
+            if (context.SemanticModel == null)
+                return Enumerable.Empty<CodeIssue>();
+
             var issues = new List<CodeIssue>();
 
             var loops = context.SyntaxRoot.DescendantNodes()
@@ -50,15 +68,12 @@ namespace Analyzer.Rules.Efficiency
                     if (!IsLinqMethod(symbol))
                         continue;
 
-                    // 🚨 Detect heavy LINQ operations
                     if (!IsExpensiveLinqMethod(symbol.Name))
                         continue;
 
-                    // 🔍 Detect if LINQ is executed on external collection (not loop variable)
                     if (!IsUsingExternalCollection(invocation, loop))
                         continue;
 
-                    // 🔥 Extra: detect nested LINQ inside loop
                     bool isNested = invocation.DescendantNodes()
                         .OfType<InvocationExpressionSyntax>()
                         .Any(inner =>
@@ -67,14 +82,16 @@ namespace Analyzer.Rules.Efficiency
                             return innerSymbol != null && IsLinqMethod(innerSymbol);
                         });
 
-                    var message = BuildMessage(symbol.Name, isNested);
-
                     issues.Add(new CodeIssue
                     {
                         RuleId = Metadata.RuleId,
-                        Message = message,
-                        Line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line,
-                        Severity = Metadata.DefaultSeverity
+                        Message = BuildMessage(symbol.Name, isNested),
+                        Line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                        Severity = Metadata.DefaultSeverity,
+                        SuggestedFix = $"Move '{symbol.Name}' outside the loop — use a Dictionary for O(1) lookup: var lookup = collection.ToDictionary(x => x.Key);",
+                        WhyItMatters = Metadata.WhyItMatters,
+                        BadCodeExample = Metadata.BadCodeExample,
+                        GoodCodeExample = Metadata.GoodCodeExample
                     });
                 }
             }
@@ -102,52 +119,34 @@ namespace Analyzer.Rules.Efficiency
 
         private bool IsExpensiveLinqMethod(string methodName)
         {
-            // High-cost LINQ operations
             return new[]
             {
-                "Where",
-                "First",
-                "FirstOrDefault",
-                "Single",
-                "SingleOrDefault",
-                "Count",
-                "Any",
-                "OrderBy",
-                "OrderByDescending",
-                "GroupBy",
-                "ToList",
-                "ToArray"
+                "Where", "First", "FirstOrDefault", "Single", "SingleOrDefault",
+                "Count", "Any", "OrderBy", "OrderByDescending",
+                "GroupBy", "ToList", "ToArray"
             }.Contains(methodName);
         }
 
         private bool IsUsingExternalCollection(InvocationExpressionSyntax invocation, SyntaxNode loop)
         {
-            // Get all identifiers inside invocation
             var identifiers = invocation.DescendantNodes()
                 .OfType<IdentifierNameSyntax>()
                 .Select(i => i.Identifier.Text)
                 .ToHashSet();
 
-            // Get loop variable
             string loopVariable = null;
-
             if (loop is ForEachStatementSyntax fe)
                 loopVariable = fe.Identifier.Text;
 
-            // If invocation uses identifiers other than loop variable → external collection
             return identifiers.Any(id => id != loopVariable);
         }
 
         private string BuildMessage(string methodName, bool isNested)
         {
             var baseMsg = $"LINQ method '{methodName}' used inside loop may cause performance issues.";
-
-            if (isNested)
-            {
-                return baseMsg + " Nested LINQ detected — high risk of O(n²) or worse complexity.";
-            }
-
-            return baseMsg + " Consider using Dictionary or precomputing results outside the loop.";
+            return isNested
+                ? baseMsg + " Nested LINQ detected — high risk of O(n²) or worse complexity."
+                : baseMsg + " Consider using Dictionary or precomputing results outside the loop.";
         }
     }
 }

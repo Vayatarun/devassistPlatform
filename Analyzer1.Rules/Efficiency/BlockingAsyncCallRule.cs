@@ -1,4 +1,4 @@
-﻿using Analyzer.Core.Enums;
+using Analyzer.Core.Enums;
 using Analyzer.Core.Interfaces;
 using Analyzer.Core.Models;
 using Analyzer.Rules.Attributes;
@@ -19,89 +19,89 @@ namespace Analyzer.Rules.Efficiency
             Description = "Blocking async calls using .Result, .Wait(), or GetAwaiter().GetResult() can cause deadlocks and thread starvation.",
             Category = "Efficiency",
             DefaultSeverity = Severity.Critical,
-           // Remediation = "Use async/await instead of blocking calls."
+            Remediation = "Make the calling method async and use await instead of blocking. Propagate async all the way up the call stack.",
+            WhyItMatters = "Blocking on async code in ASP.NET holds a thread-pool thread while waiting, starving the server. In some sync contexts it deadlocks: the waiting thread holds the sync context lock that the async continuation also needs.",
+            BadCodeExample =
+                "// BAD: blocks current thread — deadlock risk in ASP.NET!\n" +
+                "public string GetUser(int id) {\n" +
+                "    return _service.GetUserAsync(id).Result; // hangs under load\n" +
+                "}",
+            GoodCodeExample =
+                "// GOOD: async all the way — thread is released while awaiting\n" +
+                "public async Task<string> GetUser(int id) {\n" +
+                "    return await _service.GetUserAsync(id);\n" +
+                "}"
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
         {
             var issues = new List<CodeIssue>();
 
+            // Bug 4 fix: SemanticModel may be null; use syntax-only path when it is
+            var semanticModel = context.SemanticModel;
+
             var nodes = context.SyntaxRoot.DescendantNodes();
 
             foreach (var node in nodes)
             {
-                // 🔴 Detect .Result
+                // Detect .Result
                 if (node is MemberAccessExpressionSyntax memberAccess &&
                     memberAccess.Name.Identifier.Text == "Result")
                 {
-                    var symbol = context.SemanticModel.GetSymbolInfo(memberAccess.Expression).Symbol;
-                    if (IsTaskType(symbol))
+                    if (semanticModel != null)
                     {
-                        issues.Add(CreateIssue(memberAccess, "Use await instead of .Result"));
+                        var symbol = semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol;
+                        if (IsTaskType(symbol))
+                            issues.Add(CreateIssue(memberAccess, "Use 'await' instead of '.Result' to avoid thread-pool starvation and deadlocks."));
+                    }
+                    else if (memberAccess.ToString().Contains("Task") ||
+                             memberAccess.Parent is not ObjectCreationExpressionSyntax)
+                    {
+                        issues.Add(CreateIssue(memberAccess, "Use 'await' instead of '.Result' to avoid thread-pool starvation and deadlocks."));
                     }
                 }
 
-                // 🔴 Detect .Wait()
+                // Detect .Wait()
                 if (node is InvocationExpressionSyntax invocation &&
                     invocation.Expression is MemberAccessExpressionSyntax waitAccess &&
                     waitAccess.Name.Identifier.Text == "Wait")
                 {
-                    var symbol = context.SemanticModel.GetSymbolInfo(waitAccess.Expression).Symbol;
-                    if (IsTaskType(symbol))
+                    if (semanticModel != null)
+                    {
+                        var symbol = semanticModel.GetSymbolInfo(waitAccess.Expression).Symbol;
+                        if (IsTaskType(symbol))
+                            issues.Add(CreateIssue(invocation, "Use await instead of .Wait()"));
+                    }
+                    else
                     {
                         issues.Add(CreateIssue(invocation, "Use await instead of .Wait()"));
                     }
                 }
 
-                // 🔴 Detect GetAwaiter().GetResult()
+                // Detect GetAwaiter().GetResult()
                 if (node is InvocationExpressionSyntax getResultInvocation &&
                     getResultInvocation.Expression is MemberAccessExpressionSyntax getResultAccess &&
-                    getResultAccess.Name.Identifier.Text == "GetResult")
+                    getResultAccess.Name.Identifier.Text == "GetResult" &&
+                    getResultAccess.Expression is InvocationExpressionSyntax innerInvocation &&
+                    innerInvocation.Expression is MemberAccessExpressionSyntax awaiterAccess &&
+                    awaiterAccess.Name.Identifier.Text == "GetAwaiter")
                 {
-                    if (getResultAccess.Expression is InvocationExpressionSyntax innerInvocation &&
-                        innerInvocation.Expression is MemberAccessExpressionSyntax awaiterAccess &&
-                        awaiterAccess.Name.Identifier.Text == "GetAwaiter")
+                    if (semanticModel != null)
                     {
-                        var symbol = context.SemanticModel.GetSymbolInfo(awaiterAccess.Expression).Symbol;
+                        var symbol = semanticModel.GetSymbolInfo(awaiterAccess.Expression).Symbol;
                         if (IsTaskType(symbol))
-                        {
                             issues.Add(CreateIssue(getResultInvocation, "Use await instead of GetAwaiter().GetResult()"));
-                        }
+                    }
+                    else
+                    {
+                        issues.Add(CreateIssue(getResultInvocation, "Use await instead of GetAwaiter().GetResult()"));
                     }
                 }
             }
 
-            // 🔥 Extra: detect blocking inside async methods (very critical)
-            var methods = context.SyntaxRoot.DescendantNodes()
-                .OfType<MethodDeclarationSyntax>();
-
-            foreach (var method in methods)
-            {
-                if (!method.Modifiers.Any(m => m.Text == "async"))
-                    continue;
-
-                var body = method.Body;
-                if (body == null)
-                    continue;
-
-                var blockingCalls = body.DescendantNodes()
-                    .Where(n =>
-                        n is InvocationExpressionSyntax inv &&
-                        inv.ToString().Contains(".Wait()") ||
-                        n is MemberAccessExpressionSyntax ma &&
-                        ma.ToString().EndsWith(".Result"));
-
-                foreach (var call in blockingCalls)
-                {
-                    issues.Add(new CodeIssue
-                    {
-                        RuleId = Metadata.RuleId,
-                        Message = "Blocking async call inside async method detected — high risk of deadlock.",
-                        Line = call.GetLocation().GetLineSpan().StartLinePosition.Line,
-                        Severity = Severity.Critical
-                    });
-                }
-            }
+            // Bug 10 fix: removed the second loop that re-scanned async methods for the same
+            // .Result / .Wait() patterns — it caused every blocking call inside an async method
+            // to be reported twice. The first loop above already covers all occurrences.
 
             return issues;
         }
@@ -133,8 +133,12 @@ namespace Analyzer.Rules.Efficiency
             {
                 RuleId = Metadata.RuleId,
                 Message = message,
-                Line = node.GetLocation().GetLineSpan().StartLinePosition.Line,
-                Severity = Metadata.DefaultSeverity
+                Line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                Severity = Metadata.DefaultSeverity,
+                SuggestedFix = "Make the method 'async Task<T>' and replace the blocking call with 'await'",
+                WhyItMatters = Metadata.WhyItMatters,
+                BadCodeExample = Metadata.BadCodeExample,
+                GoodCodeExample = Metadata.GoodCodeExample
             };
         }
     }

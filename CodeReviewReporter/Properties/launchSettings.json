@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CodeReviewReporter": {
+      "commandName": "Project",
+      "commandLineArgs": "--file C:\\Users\\tarun.vaya\\Desktop\\8273.diff"
+    }
+  }
+}

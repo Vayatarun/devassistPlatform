@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analyzer1.Runner", "Analyze
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analyzer1.Rules", "Analyzer1.Rules\Analyzer1.Rules.csproj", "{C4E6C380-8975-482C-82FF-6E79F9915930}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analyzer.Roslyn", "Analyzer.Roslyn\Analyzer.Roslyn.csproj", "{79BEF594-B785-4463-B7AB-D557EFBBFE43}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,10 @@ Global
 		{C4E6C380-8975-482C-82FF-6E79F9915930}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4E6C380-8975-482C-82FF-6E79F9915930}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4E6C380-8975-482C-82FF-6E79F9915930}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79BEF594-B785-4463-B7AB-D557EFBBFE43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79BEF594-B785-4463-B7AB-D557EFBBFE43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79BEF594-B785-4463-B7AB-D557EFBBFE43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79BEF594-B785-4463-B7AB-D557EFBBFE43}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

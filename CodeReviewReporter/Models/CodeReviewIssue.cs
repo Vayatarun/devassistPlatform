@@ -18,6 +18,8 @@ namespace CodeReviewReporter.Models
             public string Description { get; set; }
             public string Code { get; set; }
             public string SuggestedFix { get; set; }
+            public string BadCodeExample { get; set; }
+            public string GoodCodeExample { get; set; }
 
             public string Category { get; set; }
 

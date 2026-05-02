@@ -19,7 +19,18 @@ namespace Analyzer.Rules.Security
             Description = "SQL query constructed using string concatenation or interpolation.",
             Category = "Security",
             DefaultSeverity = Severity.Critical,
-            //Remediation = "Use parameterized queries or ORM methods."
+            Remediation = "Use parameterized queries (SqlParameter) or an ORM such as Entity Framework.",
+            EffortMinutes = 30,
+            Tags = new[] { "sql", "injection", "owasp-a03", "security" },
+            WhyItMatters = "SQL Injection is OWASP Top 10 #1. An attacker can bypass login, read all data, or drop your entire database by injecting SQL through any user-controlled input field.",
+            BadCodeExample =
+                "// BAD: user input directly embedded in SQL\n" +
+                "string sql = \"SELECT * FROM Users WHERE Name = '\" + userName + \"'\";\n" +
+                "// Attack: userName = \"' OR '1'='1'--\"  → returns ALL rows!",
+            GoodCodeExample =
+                "// GOOD: parameterized query — input is never interpreted as SQL\n" +
+                "string sql = \"SELECT * FROM Users WHERE Name = @name\";\n" +
+                "cmd.Parameters.AddWithValue(\"@name\", userName);"
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
@@ -44,8 +55,12 @@ namespace Analyzer.Rules.Security
                     {
                         RuleId = Metadata.RuleId,
                         Message = "Possible SQL Injection via string concatenation.",
-                        Line = expr.GetLocation().GetLineSpan().StartLinePosition.Line,
-                        Severity = Severity.Critical
+                        Line = expr.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                        Severity = Severity.Critical,
+                        SuggestedFix = "Replace string concatenation with: cmd.Parameters.AddWithValue(\"@param\", value);",
+                        WhyItMatters = Metadata.WhyItMatters,
+                        BadCodeExample = Metadata.BadCodeExample,
+                        GoodCodeExample = Metadata.GoodCodeExample
                     });
                 }
             }
@@ -64,8 +79,12 @@ namespace Analyzer.Rules.Security
                     {
                         RuleId = Metadata.RuleId,
                         Message = "Possible SQL Injection via string interpolation.",
-                        Line = interp.GetLocation().GetLineSpan().StartLinePosition.Line,
-                        Severity = Severity.Critical
+                        Line = interp.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                        Severity = Severity.Critical,
+                        SuggestedFix = "Replace interpolated SQL string with: cmd.Parameters.AddWithValue(\"@param\", value);",
+                        WhyItMatters = Metadata.WhyItMatters,
+                        BadCodeExample = Metadata.BadCodeExample,
+                        GoodCodeExample = Metadata.GoodCodeExample
                     });
                 }
             }

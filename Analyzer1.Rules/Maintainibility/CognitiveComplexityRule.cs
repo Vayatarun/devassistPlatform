@@ -21,7 +21,34 @@ namespace Analyzer.Rules.Maintainability
             Description = "Method is too complex to understand easily.",
             Category = "Maintainability",
             DefaultSeverity = Severity.Info,
-           // Remediation = "Refactor method to reduce nesting and simplify logic."
+            Remediation = "Refactor the method: extract sub-logic into smaller private methods, reduce nesting with guard clauses, and simplify conditional chains.",
+            EffortMinutes = 45,
+            Tags = new[] { "complexity", "maintainability", "cognitive-complexity" },
+            WhyItMatters = "High cognitive complexity means it takes extraordinary mental effort to understand what a method does. It's hard to test all paths, bugs hide in the complexity, and modifications frequently introduce regressions.",
+            BadCodeExample =
+                "// BAD: deep nesting + many conditions = high cognitive complexity\n" +
+                "void ProcessOrder(Order o) {\n" +
+                "    if (o != null) {\n" +
+                "        if (o.IsValid) {\n" +
+                "            for (var item in o.Items) {\n" +
+                "                if (item.InStock) {\n" +
+                "                    if (item.Price > 0) { Ship(item); }\n" +
+                "                }\n" +
+                "            }\n" +
+                "        }\n" +
+                "    }\n" +
+                "}",
+            GoodCodeExample =
+                "// GOOD: decomposed into small, testable methods\n" +
+                "void ProcessOrder(Order o) {\n" +
+                "    if (!IsOrderValid(o)) return;\n" +
+                "    ShipEligibleItems(o.Items);\n" +
+                "}\n" +
+                "bool IsOrderValid(Order o) => o != null && o.IsValid;\n" +
+                "void ShipEligibleItems(IEnumerable<Item> items) {\n" +
+                "    foreach (var item in items.Where(i => i.InStock && i.Price > 0))\n" +
+                "        Ship(item);\n" +
+                "}"
         };
 
         public IEnumerable<CodeIssue> Analyze(AnalysisContext context)
@@ -44,9 +71,13 @@ namespace Analyzer.Rules.Maintainability
                     issues.Add(new CodeIssue
                     {
                         RuleId = Metadata.RuleId,
-                        Message = $"Method '{method.Identifier.Text}' has high cognitive complexity ({complexity}).",
-                        Line = method.GetLocation().GetLineSpan().StartLinePosition.Line,
-                        Severity = CalculateSeverity(complexity)
+                        Message = $"Method '{method.Identifier.Text}' has high cognitive complexity ({complexity}, threshold: {Threshold}). Extract logic into smaller private methods.",
+                        Line = method.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                        Severity = CalculateSeverity(complexity),
+                        SuggestedFix = $"Extract sub-logic from '{method.Identifier.Text}' into private helper methods, and use guard clauses to reduce nesting",
+                        WhyItMatters = Metadata.WhyItMatters,
+                        BadCodeExample = Metadata.BadCodeExample,
+                        GoodCodeExample = Metadata.GoodCodeExample
                     });
                 }
             }

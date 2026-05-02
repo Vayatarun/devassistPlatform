@@ -1,19 +1,255 @@
-﻿@page "/projects"
-@using Analyzer1.UI.Model
+@page "/projects"
+@inject IApiService Api
+@inject NavigationManager Nav
 
-<h3>Projects</h3>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Projects</h1>
+        <p class="page-subtitle">Manage and scan your code repositories</p>
+    </div>
+    <button class="btn btn-primary" @onclick="() => _showAdd = true">
+        <i class="bi bi-plus-lg"></i> Add Project
+    </button>
+</div>
 
-@foreach (var p in Project)
+@if (_scanMsg != null)
 {
-    <div class="card">
-        <h4>@p.Name</h4>
-        <p>Issues: @p.Issues</p>
+    <div class="alert @(_scanOk ? "alert-success" : "alert-danger")" style="margin-bottom:16px">
+        <i class="bi @(_scanOk ? "bi-check-circle" : "bi-x-circle")"></i>
+        @_scanMsg
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="loading-container"><div class="spinner"></div><span>Loading projects...</span></div>
+}
+else if (_projects.Count == 0)
+{
+    <div class="empty-state">
+        <i class="bi bi-folder2-open"></i>
+        <div class="empty-state-title">No Projects Yet</div>
+        <div class="empty-state-desc">Add a project folder to start scanning your C# codebase for issues.</div>
+        <button class="btn btn-primary" @onclick="() => _showAdd = true">
+            <i class="bi bi-plus-lg"></i> Add First Project
+        </button>
+    </div>
+}
+else
+{
+    <div class="project-grid">
+        @foreach (var p in _projects)
+        {
+            var gc = (p.QualityGateStatus?.ToLower()) switch {
+                "passed" => "passed",
+                "failed" => "failed",
+                _ => "unknown"
+            };
+            <div class="project-card">
+                <div class="project-card-header">
+                    <div>
+                        <div class="project-name">@p.Name</div>
+                        @if (!string.IsNullOrEmpty(p.Description))
+                        {
+                            <div class="project-desc">@p.Description</div>
+                        }
+                        else
+                        {
+                            <div class="project-desc" style="font-size:11px;color:var(--text-muted)">@TruncatePath(p.Path)</div>
+                        }
+                    </div>
+                    <span class="qg-badge @gc">
+                        @if (gc == "passed")     { <i class="bi bi-check-lg"></i> }
+                        else if (gc == "failed") { <i class="bi bi-x-lg"></i> }
+                        else                     { <i class="bi bi-dash"></i> }
+                        @gc.ToUpper()
+                    </span>
+                </div>
+
+                <div class="project-card-metrics">
+                    <div class="project-metric">
+                        <div class="project-metric-value" style="color:var(--critical-color)">@GetMetric(p.Id, "critical")</div>
+                        <div class="project-metric-label">Critical</div>
+                    </div>
+                    <div class="project-metric">
+                        <div class="project-metric-value" style="color:var(--error-color)">@GetMetric(p.Id, "error")</div>
+                        <div class="project-metric-label">Errors</div>
+                    </div>
+                    <div class="project-metric">
+                        <div class="project-metric-value" style="color:var(--warning-color)">@GetMetric(p.Id, "warning")</div>
+                        <div class="project-metric-label">Warnings</div>
+                    </div>
+                    <div class="project-metric">
+                        <div class="project-metric-value">@p.IssueCount</div>
+                        <div class="project-metric-label">Total</div>
+                    </div>
+                </div>
+
+                <div class="project-card-footer">
+                    <div class="project-last-scan">
+                        <i class="bi bi-clock"></i>
+                        @(p.LastScan.HasValue ? $"Scanned {TimeAgo(p.LastScan.Value)}" : "Never scanned")
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-secondary btn-sm" @onclick="@(() => Nav.NavigateTo($"/issues?projectId={p.Id}"))">
+                            <i class="bi bi-list-ul"></i> Issues
+                        </button>
+                        <button class="btn btn-primary btn-sm" @onclick="@(() => RunScan(p.Id))"
+                                disabled="@_scanningId.Contains(p.Id)">
+                            @if (_scanningId.Contains(p.Id))
+                            {
+                                <span class="spinner" style="width:12px;height:12px;border-width:2px"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-play-fill"></i>
+                            }
+                            Scan
+                        </button>
+                        <button class="btn btn-danger btn-sm btn-icon" @onclick="@(() => DeleteProject(p.Id))" title="Delete">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ── Add Project Modal ──────────────────────────────────────────────────── *@
+@if (_showAdd)
+{
+    <div class="modal-overlay" @onclick="CloseAdd">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span>Add Project</span>
+                <button class="btn btn-secondary btn-icon btn-sm" @onclick="CloseAdd">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Project Name</label>
+                    <input class="form-control" @bind="_newName" placeholder="e.g. HRMS Backend" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Project Path</label>
+                    <input class="form-control" @bind="_newPath" placeholder="C:\Projects\MyApp" />
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                        Local folder containing .cs files to analyze
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <input class="form-control" @bind="_newDesc" placeholder="Short description" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="CloseAdd">Cancel</button>
+                <button class="btn btn-primary" @onclick="SaveProject" disabled="@_saving">
+                    @if (_saving) { <span class="spinner" style="width:12px;height:12px;border-width:2px"></span> }
+                    <i class="bi bi-plus-lg"></i> Add Project
+                </button>
+            </div>
+        </div>
     </div>
 }
 
 @code {
-    List<ProjectModel> Project = new()
+    List<ProjectDto> _projects = new();
+    Dictionary<int, MetricsDto> _metrics = new();
+    HashSet<int> _scanningId = new();
+    bool _loading = true;
+    bool _showAdd, _saving;
+    string _newName = "", _newPath = "", _newDesc = "";
+    string? _scanMsg;
+    bool _scanOk;
+
+    protected override async Task OnInitializedAsync()
     {
-        new ProjectModel { Name="HRMS", Issues=120 }
-    };
+        await LoadProjects();
+    }
+
+    async Task LoadProjects()
+    {
+        _loading = true;
+        _projects = await Api.GetProjectsAsync();
+        _loading = false;
+
+        // Load metrics for each project in parallel
+        var metricTasks = _projects.Select(async p =>
+        {
+            var m = await Api.GetMetricsAsync(p.Id);
+            if (m != null) lock (_metrics) { _metrics[p.Id] = m; }
+        });
+        await Task.WhenAll(metricTasks);
+        StateHasChanged();
+    }
+
+    string GetMetric(int projectId, string type) =>
+        _metrics.TryGetValue(projectId, out var m) ? type switch {
+            "critical" => m.CriticalCount.ToString(),
+            "error"    => m.ErrorCount.ToString(),
+            "warning"  => m.WarningCount.ToString(),
+            _          => "—"
+        } : "—";
+
+    async Task RunScan(int projectId)
+    {
+        _scanningId.Add(projectId);
+        _scanMsg = null;
+        StateHasChanged();
+
+        var result = await Api.RunScanAsync(projectId);
+
+        _scanningId.Remove(projectId);
+        if (result != null)
+        {
+            _scanOk = true;
+            _scanMsg = $"Scan complete — {result.IssueCount} issues found. Quality Gate: {(result.QualityGatePassed ? "PASSED ✓" : "FAILED ✗")}";
+            await LoadProjects();
+        }
+        else
+        {
+            _scanOk = false;
+            _scanMsg = "Scan failed. Check that the API is running and the project path is accessible.";
+            StateHasChanged();
+        }
+    }
+
+    async Task DeleteProject(int id)
+    {
+        await Api.DeleteProjectAsync(id);
+        _projects.RemoveAll(p => p.Id == id);
+        _metrics.Remove(id);
+    }
+
+    async Task SaveProject()
+    {
+        if (string.IsNullOrWhiteSpace(_newName) || string.IsNullOrWhiteSpace(_newPath)) return;
+        _saving = true;
+        var p = await Api.CreateProjectAsync(new CreateProjectRequest
+        {
+            Name = _newName.Trim(),
+            Path = _newPath.Trim(),
+            Description = string.IsNullOrWhiteSpace(_newDesc) ? null : _newDesc.Trim()
+        });
+        _saving = false;
+        if (p != null) _projects.Add(p);
+        CloseAdd();
+    }
+
+    void CloseAdd() { _showAdd = false; _newName = _newPath = _newDesc = ""; }
+
+    static string TimeAgo(DateTime dt)
+    {
+        var d = DateTime.Now - dt;
+        if (d.TotalMinutes < 2)  return "just now";
+        if (d.TotalMinutes < 60) return $"{(int)d.TotalMinutes}m ago";
+        if (d.TotalHours < 24)   return $"{(int)d.TotalHours}h ago";
+        return dt.ToString("MMM d");
+    }
+
+    static string TruncatePath(string path) =>
+        path.Length > 50 ? "..." + path[^47..] : path;
 }
